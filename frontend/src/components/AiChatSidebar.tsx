@@ -29,7 +29,7 @@ export const AiChatSidebar = ({
   };
 
   return (
-    <aside className="flex max-h-[calc(100vh-116px)] min-h-[520px] flex-col rounded-3xl border border-[var(--stroke)] bg-white p-4 shadow-[var(--shadow)] lg:sticky lg:top-24">
+    <aside className="flex max-h-[min(720px,calc(100vh-96px))] min-h-[420px] flex-col rounded-3xl border border-[var(--stroke)] bg-white p-4 shadow-[var(--shadow)] lg:sticky lg:top-24 lg:min-h-[520px]">
       <div className="border-b border-[var(--stroke)] pb-4">
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--gray-text)]">
           AI
@@ -50,8 +50,8 @@ export const AiChatSidebar = ({
               key={`${item.role}-${index}-${item.content.slice(0, 12)}`}
               className={
                 item.role === "user"
-                  ? "ml-6 rounded-2xl bg-[var(--primary-blue)] px-4 py-3 text-sm leading-6 text-white"
-                  : "mr-6 rounded-2xl border border-[var(--stroke)] bg-[var(--surface)] px-4 py-3 text-sm leading-6 text-[var(--navy-dark)]"
+                  ? "ml-6 break-words rounded-2xl bg-[var(--primary-blue)] px-4 py-3 text-sm leading-6 text-white"
+                  : "mr-6 break-words rounded-2xl border border-[var(--stroke)] bg-[var(--surface)] px-4 py-3 text-sm leading-6 text-[var(--navy-dark)]"
               }
             >
               {item.content}
@@ -66,7 +66,7 @@ export const AiChatSidebar = ({
       </div>
 
       {error && (
-        <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+        <p className="mt-4 break-words rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
           {error}
         </p>
       )}

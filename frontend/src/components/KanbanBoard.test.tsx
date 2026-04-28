@@ -135,7 +135,9 @@ describe("KanbanBoard", () => {
     await userEvent.click(screen.getByRole("button", { name: "Send" }));
 
     expect(await screen.findByText("Created the AI card.")).toBeInTheDocument();
-    expect(screen.getByText("Launch notes")).toBeInTheDocument();
+    const aiCard = screen.getByTestId("card-card-ai");
+    expect(within(aiCard).getByText("Launch notes")).toBeInTheDocument();
+    expect(aiCard).toHaveAttribute("data-highlighted", "true");
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/ai/chat",
       expect.objectContaining({ method: "POST" })

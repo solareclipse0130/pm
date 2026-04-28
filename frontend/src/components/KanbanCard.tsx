@@ -6,11 +6,17 @@ import type { Card } from "@/lib/kanban";
 
 type KanbanCardProps = {
   card: Card;
+  isHighlighted?: boolean;
   onUpdate: (cardId: string, title: string, details: string) => void;
   onDelete: (cardId: string) => void;
 };
 
-export const KanbanCard = ({ card, onUpdate, onDelete }: KanbanCardProps) => {
+export const KanbanCard = ({
+  card,
+  isHighlighted = false,
+  onUpdate,
+  onDelete,
+}: KanbanCardProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(card.title);
   const [details, setDetails] = useState(card.details);
@@ -29,11 +35,13 @@ export const KanbanCard = ({ card, onUpdate, onDelete }: KanbanCardProps) => {
       className={clsx(
         "rounded-2xl border border-transparent bg-white px-4 py-4 shadow-[0_12px_24px_rgba(3,33,71,0.08)]",
         "transition-all duration-150",
+        isHighlighted && "border-[var(--accent-yellow)] ring-2 ring-[var(--accent-yellow)]",
         isDragging && "opacity-60 shadow-[0_18px_32px_rgba(3,33,71,0.16)]"
       )}
       {...attributes}
       {...listeners}
       data-testid={`card-${card.id}`}
+      data-highlighted={isHighlighted ? "true" : "false"}
     >
       <div className="flex items-start justify-between gap-3">
         {isEditing ? (
@@ -83,11 +91,11 @@ export const KanbanCard = ({ card, onUpdate, onDelete }: KanbanCardProps) => {
           </form>
         ) : (
           <>
-            <div>
-              <h4 className="font-display text-base font-semibold text-[var(--navy-dark)]">
+            <div className="min-w-0">
+              <h4 className="break-words font-display text-base font-semibold text-[var(--navy-dark)]">
                 {card.title}
               </h4>
-              <p className="mt-2 text-sm leading-6 text-[var(--gray-text)]">
+              <p className="mt-2 break-words text-sm leading-6 text-[var(--gray-text)]">
                 {card.details}
               </p>
             </div>

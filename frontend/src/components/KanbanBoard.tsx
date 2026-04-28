@@ -23,6 +23,39 @@ import {
   type BoardData,
 } from "@/lib/kanban";
 
+const getCardPositions = (board: BoardData) =>
+  new Map(
+    board.columns.flatMap((column) =>
+      column.cardIds.map((cardId, index) => [
+        cardId,
+        `${column.id}:${index}`,
+      ] as const)
+    )
+  );
+
+const getChangedCardIds = (previous: BoardData, next: BoardData) => {
+  const changed = new Set<string>();
+  const previousPositions = getCardPositions(previous);
+  const nextPositions = getCardPositions(next);
+
+  for (const [cardId, card] of Object.entries(next.cards)) {
+    const previousCard = previous.cards[cardId];
+    if (!previousCard) {
+      changed.add(cardId);
+      continue;
+    }
+    if (
+      previousCard.title !== card.title ||
+      previousCard.details !== card.details ||
+      previousPositions.get(cardId) !== nextPositions.get(cardId)
+    ) {
+      changed.add(cardId);
+    }
+  }
+
+  return changed;
+};
+
 export const KanbanBoard = () => {
   const [board, setBoard] = useState<BoardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,6 +64,9 @@ export const KanbanBoard = () => {
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [isAiSending, setIsAiSending] = useState(false);
   const [aiError, setAiError] = useState("");
+  const [highlightedCardIds, setHighlightedCardIds] = useState<Set<string>>(
+    new Set()
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -65,6 +101,17 @@ export const KanbanBoard = () => {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (highlightedCardIds.size === 0) {
+      return;
+    }
+    const timeoutId = window.setTimeout(() => {
+      setHighlightedCardIds(new Set());
+    }, 4000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [highlightedCardIds]);
 
   const updateBoard = (updater: (board: BoardData) => BoardData) => {
     if (!board) {
@@ -180,6 +227,7 @@ export const KanbanBoard = () => {
       const response = await sendAiMessage(message, chatHistory);
       setChatHistory(response.history);
       if (response.board) {
+        setHighlightedCardIds(board ? getChangedCardIds(board, response.board) : new Set());
         setBoard(response.board);
         setSaveStatus("idle");
       }
@@ -215,9 +263,6 @@ export const KanbanBoard = () => {
 
   return (
     <div className="relative overflow-hidden">
-      <div className="pointer-events-none absolute left-0 top-0 h-[420px] w-[420px] -translate-x-1/3 -translate-y-1/3 rounded-full bg-[radial-gradient(circle,_rgba(32,157,215,0.25)_0%,_rgba(32,157,215,0.05)_55%,_transparent_70%)]" />
-      <div className="pointer-events-none absolute bottom-0 right-0 h-[520px] w-[520px] translate-x-1/4 translate-y-1/4 rounded-full bg-[radial-gradient(circle,_rgba(117,57,145,0.18)_0%,_rgba(117,57,145,0.05)_55%,_transparent_75%)]" />
-
       <main className="relative mx-auto flex min-h-screen max-w-[1700px] flex-col gap-10 px-6 pb-16 pt-12">
         <header className="flex flex-col gap-6 rounded-[32px] border border-[var(--stroke)] bg-white/80 p-8 shadow-[var(--shadow)] backdrop-blur">
           <div className="flex flex-wrap items-start justify-between gap-6">
@@ -273,6 +318,7 @@ export const KanbanBoard = () => {
                   key={column.id}
                   column={column}
                   cards={column.cardIds.map((cardId) => board.cards[cardId])}
+                  highlightedCardIds={highlightedCardIds}
                   onRename={handleRenameColumn}
                   onAddCard={handleAddCard}
                   onUpdateCard={handleUpdateCard}
