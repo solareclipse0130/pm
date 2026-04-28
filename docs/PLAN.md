@@ -225,29 +225,29 @@ Goal: make the frontend use the backend API so the Kanban board is persistent.
 
 ### Tasks
 
-- [ ] Replace frontend-only demo state with API-backed board loading.
-- [ ] Save card edits, card moves, card creation, and column renames through the backend API.
-- [ ] Add loading and error states that are simple and unobtrusive.
-- [ ] Keep drag and drop behavior intact.
-- [ ] Ensure logout/login does not destroy persisted board data.
-- [ ] Add frontend integration tests around API-backed behavior.
-- [ ] Add e2e tests for persistence across page reloads.
+- [x] Replace frontend-only demo state with API-backed board loading.
+- [x] Save card edits, card moves, card creation, and column renames through the backend API.
+- [x] Add loading and error states that are simple and unobtrusive.
+- [x] Keep drag and drop behavior intact.
+- [x] Ensure logout/login does not destroy persisted board data.
+- [x] Add frontend integration tests around API-backed behavior.
+- [x] Add e2e tests for persistence across page reloads.
 
 ### Tests
 
-- [ ] Run frontend unit tests.
-- [ ] Run frontend e2e tests.
-- [ ] Run backend tests.
-- [ ] Run Docker app and manually verify changes persist after refresh.
-- [ ] Restart the Docker app and verify persisted data remains.
+- [x] Run frontend unit tests.
+- [x] Run frontend e2e tests.
+- [x] Run backend tests.
+- [x] Run Docker app and manually verify changes persist after refresh.
+- [x] Restart the Docker app and verify persisted data remains.
 
 ### Success Criteria
 
-- [ ] The Kanban board is loaded from the backend.
-- [ ] User changes are saved to SQLite.
-- [ ] Refreshing the browser preserves the board.
-- [ ] Restarting the app preserves the board.
-- [ ] Tests pass.
+- [x] The Kanban board is loaded from the backend.
+- [x] User changes are saved to SQLite.
+- [x] Refreshing the browser preserves the board.
+- [x] Restarting the app preserves the board.
+- [x] Tests pass.
 
 ## Phase 8: AI Connectivity
 

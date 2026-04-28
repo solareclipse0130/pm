@@ -1,10 +1,16 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AppShell } from "@/components/AppShell";
+import { initialData } from "@/lib/kanban";
 
 describe("AppShell", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json(initialData)));
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("shows the login screen before authentication", () => {
@@ -32,7 +38,7 @@ describe("AppShell", () => {
     await userEvent.type(screen.getByLabelText("Password"), "password");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
-    expect(screen.getByRole("heading", { name: "Kanban Studio" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Kanban Studio" })).toBeInTheDocument();
     expect(window.localStorage.getItem("pm-mvp-authenticated")).toBe("true");
   });
 
