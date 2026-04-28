@@ -1,6 +1,7 @@
 # Running The Local App
 
 The Docker app builds the static NextJS frontend and serves it through FastAPI.
+SQLite data is stored in project root `data/app.db` when the Docker scripts are used.
 
 ## macOS
 

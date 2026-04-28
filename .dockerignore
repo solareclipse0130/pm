@@ -8,5 +8,6 @@
 frontend/.next
 frontend/out
 frontend/test-results
+data
 .env
 .DS_Store

@@ -11,11 +11,13 @@ RUN npm run build
 FROM python:3.14-slim-bookworm
 
 ENV PYTHONUNBUFFERED=1
+ENV DATABASE_PATH="/app/data/app.db"
 ENV PATH="/app/backend/.venv/bin:$PATH"
 
 WORKDIR /app/backend
 
 RUN pip install --no-cache-dir uv==0.11.8
+RUN mkdir -p /app/data
 
 COPY backend/pyproject.toml backend/uv.lock ./
 RUN uv sync --locked --no-dev

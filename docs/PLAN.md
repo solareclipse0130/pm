@@ -158,31 +158,31 @@ Goal: design the SQLite schema and Kanban JSON shape before implementing persist
 
 ### Tasks
 
-- [ ] Propose a simple SQLite schema that supports multiple users later.
-- [ ] Store each user's single MVP Kanban board as JSON.
-- [ ] Define the Kanban JSON shape:
-  - [ ] columns
-  - [ ] cards
-  - [ ] column order
-  - [ ] card order
-  - [ ] timestamps if needed
-- [ ] Define how default board data is created for a new user.
-- [ ] Define minimal validation rules for board JSON.
-- [ ] Document the database approach in `docs/DATABASE.md`.
-- [ ] Ask the user to review and approve the database approach before Phase 6.
+- [x] Propose a simple SQLite schema that supports multiple users later.
+- [x] Store each user's single MVP Kanban board as JSON.
+- [x] Define the Kanban JSON shape:
+  - [x] columns
+  - [x] cards
+  - [x] column order
+  - [x] card order
+  - [x] timestamps if needed
+- [x] Define how default board data is created for a new user.
+- [x] Define minimal validation rules for board JSON.
+- [x] Document the database approach in `docs/DATABASE.md`.
+- [x] Ask the user to review and approve the database approach before Phase 6.
 
 ### Tests
 
-- [ ] No implementation tests required before approval.
-- [ ] Review the schema against the MVP requirements.
-- [ ] Check that the schema does not block future multiple-user support.
+- [x] No implementation tests required before approval.
+- [x] Review the schema against the MVP requirements.
+- [x] Check that the schema does not block future multiple-user support.
 
 ### Success Criteria
 
-- [ ] `docs/DATABASE.md` explains the schema and JSON format.
-- [ ] The approach supports one board per signed-in user for the MVP.
-- [ ] The approach can support multiple users later.
-- [ ] The user approves moving to Phase 6.
+- [x] `docs/DATABASE.md` explains the schema and JSON format.
+- [x] The approach supports one board per signed-in user for the MVP.
+- [x] The approach can support multiple users later.
+- [x] The user approves moving to Phase 6.
 
 ### Approval
 
@@ -194,30 +194,30 @@ Goal: add backend routes to read and update the Kanban board for a user.
 
 ### Tasks
 
-- [ ] Add SQLite initialization that creates the database if missing.
-- [ ] Add user and board persistence based on the approved schema.
-- [ ] Add API routes for:
-  - [ ] reading the current user's board
-  - [ ] replacing or updating the current user's board
-  - [ ] health checking the backend
-- [ ] Add simple validation for board JSON.
-- [ ] Add deterministic default board creation for the MVP user.
-- [ ] Keep API responses small and predictable.
-- [ ] Add backend unit tests for database initialization, default board creation, read, update, and validation errors.
+- [x] Add SQLite initialization that creates the database if missing.
+- [x] Add user and board persistence based on the approved schema.
+- [x] Add API routes for:
+  - [x] reading the current user's board
+  - [x] replacing or updating the current user's board
+  - [x] health checking the backend
+- [x] Add simple validation for board JSON.
+- [x] Add deterministic default board creation for the MVP user.
+- [x] Keep API responses small and predictable.
+- [x] Add backend unit tests for database initialization, default board creation, read, update, and validation errors.
 
 ### Tests
 
-- [ ] Run backend unit tests with a temporary SQLite database.
-- [ ] Run API tests through FastAPI's test client.
-- [ ] Verify a missing database is created automatically.
-- [ ] Verify data persists across backend restarts in Docker.
+- [x] Run backend unit tests with a temporary SQLite database.
+- [x] Run API tests through FastAPI's test client.
+- [x] Verify a missing database is created automatically.
+- [x] Verify data persists across backend restarts in Docker.
 
 ### Success Criteria
 
-- [ ] Backend can create, read, and update the MVP user's board.
-- [ ] SQLite database is created when missing.
-- [ ] Invalid board data is rejected with a clear error.
-- [ ] Backend tests pass.
+- [x] Backend can create, read, and update the MVP user's board.
+- [x] SQLite database is created when missing.
+- [x] Invalid board data is rejected with a clear error.
+- [x] Backend tests pass.
 
 ## Phase 7: Frontend And Backend Integration
 

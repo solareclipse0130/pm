@@ -2,8 +2,10 @@ $RootDir = Resolve-Path (Join-Path $PSScriptRoot "..")
 $ImageName = "pm-mvp"
 $ContainerName = "pm-mvp"
 $Port = if ($env:PORT) { $env:PORT } else { "9000" }
+$DataDir = Join-Path $RootDir "data"
 
 Set-Location $RootDir
+New-Item -ItemType Directory -Force $DataDir | Out-Null
 
 docker build -t $ImageName .
 
@@ -30,7 +32,7 @@ if (Test-Path $EnvFile) {
 }
 
 try {
-    docker run -d --name $ContainerName -p "${Port}:8000" @EnvArgs $ImageName
+    docker run -d --name $ContainerName -p "${Port}:8000" -v "${DataDir}:/app/data" @EnvArgs $ImageName
 } finally {
     if ($TempEnvFile) {
         Remove-Item $TempEnvFile -ErrorAction SilentlyContinue

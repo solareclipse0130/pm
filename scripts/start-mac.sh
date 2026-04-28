@@ -5,8 +5,10 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 IMAGE_NAME="pm-mvp"
 CONTAINER_NAME="pm-mvp"
 PORT="${PORT:-9000}"
+DATA_DIR="$ROOT_DIR/data"
 
 cd "$ROOT_DIR"
+mkdir -p "$DATA_DIR"
 
 docker build -t "$IMAGE_NAME" .
 
@@ -37,6 +39,7 @@ trap 'if [ -n "$temp_env_file" ]; then rm -f "$temp_env_file"; fi' EXIT
 docker run -d \
   --name "$CONTAINER_NAME" \
   -p "${PORT}:8000" \
+  -v "${DATA_DIR}:/app/data" \
   "${env_args[@]}" \
   "$IMAGE_NAME"
 

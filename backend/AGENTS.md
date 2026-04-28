@@ -5,6 +5,7 @@ This directory contains the FastAPI backend for the Project Management MVP.
 ## Structure
 
 - `app/main.py` defines the FastAPI app.
+- `app/storage.py` contains SQLite persistence and Kanban board validation.
 - `static/` holds the static site served at `/`; Docker replaces it with the built NextJS export.
 - `tests/` contains backend tests.
 - `pyproject.toml` defines Python dependencies and pytest settings.
