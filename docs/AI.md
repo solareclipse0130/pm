@@ -40,3 +40,5 @@ DeepSeek must return JSON with:
 The backend validates any returned board before saving. Invalid AI output returns an error and leaves the persisted board unchanged.
 
 Conversation history is returned to the caller for the MVP. It is not stored in SQLite.
+
+The frontend chat sidebar sends messages to this endpoint and replaces the visible Kanban board when the response includes a board update.

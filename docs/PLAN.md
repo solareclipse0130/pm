@@ -319,45 +319,45 @@ Goal: add a polished sidebar chat experience that lets the AI help manage the Ka
 
 ### Tasks
 
-- [ ] Add a sidebar chat widget to the existing UI.
-- [ ] Match the project color scheme from `AGENTS.md`.
-- [ ] Support sending messages and rendering assistant replies.
-- [ ] Show simple loading and error states.
-- [ ] Call the backend AI endpoint.
-- [ ] Refresh the Kanban board automatically when the AI updates it.
-- [ ] Preserve drag and drop and manual editing behavior.
-- [ ] Add frontend tests for chat rendering and message sending.
-- [ ] Add e2e tests for an AI-assisted board update with the AI mocked.
-- [ ] Verify responsive layout on desktop and mobile.
+- [x] Add a sidebar chat widget to the existing UI.
+- [x] Match the project color scheme from `AGENTS.md`.
+- [x] Support sending messages and rendering assistant replies.
+- [x] Show simple loading and error states.
+- [x] Call the backend AI endpoint.
+- [x] Refresh the Kanban board automatically when the AI updates it.
+- [x] Preserve drag and drop and manual editing behavior.
+- [x] Add frontend tests for chat rendering and message sending.
+- [x] Add e2e tests for an AI-assisted board update with the AI mocked.
+- [x] Verify responsive layout on desktop and mobile.
 
 ### Tests
 
-- [ ] Run frontend lint.
-- [ ] Run frontend unit tests.
-- [ ] Run frontend e2e tests.
-- [ ] Run backend tests.
-- [ ] Run Docker app and manually verify the chat sidebar.
-- [ ] Verify AI board updates refresh the UI automatically.
+- [x] Run frontend lint.
+- [x] Run frontend unit tests.
+- [x] Run frontend e2e tests.
+- [x] Run backend tests.
+- [x] Run Docker app and manually verify the chat sidebar.
+- [x] Verify AI board updates refresh the UI automatically.
 
 ### Success Criteria
 
-- [ ] Chat sidebar is visible and usable.
-- [ ] User can send messages and see AI responses.
-- [ ] AI can create, edit, or move cards through structured output.
-- [ ] UI refreshes after AI updates the board.
-- [ ] Layout remains usable on supported screen sizes.
-- [ ] Tests pass.
+- [x] Chat sidebar is visible and usable.
+- [x] User can send messages and see AI responses.
+- [x] AI can create, edit, or move cards through structured output.
+- [x] UI refreshes after AI updates the board.
+- [x] Layout remains usable on supported screen sizes.
+- [x] Tests pass.
 
 ## Final MVP Acceptance
 
-- [ ] App runs locally in one Docker container.
-- [ ] User can sign in with `user` and `password`.
-- [ ] User can log out.
-- [ ] User sees one persistent Kanban board.
-- [ ] Fixed columns can be renamed.
-- [ ] Cards can be moved with drag and drop.
-- [ ] Cards can be edited.
-- [ ] AI chat sidebar can create, edit, and move one or more cards.
-- [ ] SQLite database is created automatically if missing.
-- [ ] Start and stop scripts exist for macOS, Windows, and Linux.
-- [ ] Core backend and frontend tests pass.
+- [x] App runs locally in one Docker container.
+- [x] User can sign in with `user` and `password`.
+- [x] User can log out.
+- [x] User sees one persistent Kanban board.
+- [x] Fixed columns can be renamed.
+- [x] Cards can be moved with drag and drop.
+- [x] Cards can be edited.
+- [x] AI chat sidebar can create, edit, and move one or more cards.
+- [x] SQLite database is created automatically if missing.
+- [x] Start and stop scripts exist for macOS, Windows, and Linux.
+- [x] Core backend and frontend tests pass.

@@ -6,7 +6,7 @@ This directory contains the existing NextJS Kanban demo for the Project Manageme
 
 - `src/app/` contains the NextJS app entrypoints and global styles.
 - `src/components/` contains Kanban UI components.
-- `src/lib/` contains board data helpers and movement logic.
+- `src/lib/` contains board data helpers, movement logic, and API clients.
 - `tests/` contains Playwright end-to-end tests.
 - `public/` contains static public assets.
 
@@ -27,3 +27,4 @@ From `frontend/`:
 - Preserve existing drag, edit, add, and delete behavior unless a phase explicitly changes it.
 - Keep styling aligned with the project color scheme in the root `AGENTS.md`.
 - Avoid introducing server-only NextJS features while the Docker app serves static files.
+- Keep the AI chat sidebar API-backed and update the visible board when the backend returns a board update.

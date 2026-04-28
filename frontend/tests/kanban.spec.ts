@@ -96,6 +96,29 @@ const mockBoardApi = async (page: Page) => {
     }
     await route.fulfill({ json: apiBoard });
   });
+  await page.route("**/api/ai/chat", async (route) => {
+    const nextBoard = structuredClone(apiBoard);
+    nextBoard.cards["card-ai"] = {
+      id: "card-ai",
+      title: "AI launch notes",
+      details: "Created by the mocked AI assistant.",
+      createdAt: "2026-01-01T00:00:00Z",
+      updatedAt: "2026-01-01T00:00:00Z",
+    };
+    nextBoard.columns[0].cardIds.push("card-ai");
+    apiBoard = nextBoard;
+    await route.fulfill({
+      json: {
+        assistantMessage: "Created AI launch notes.",
+        board: apiBoard,
+        operationSummary: "Added a backlog card.",
+        history: [
+          { role: "user", content: "Create a launch notes card" },
+          { role: "assistant", content: "Created AI launch notes." },
+        ],
+      },
+    });
+  });
 };
 
 const signIn = async (page: Page) => {
@@ -164,6 +187,7 @@ test("persists changes across reloads", async ({ page }) => {
 });
 
 test("moves a card between columns", async ({ page }) => {
+  await page.setViewportSize({ width: 1700, height: 1000 });
   await signIn(page);
   const card = page.getByTestId("card-card-1");
   const targetColumn = page.getByTestId("column-col-review");
@@ -185,4 +209,22 @@ test("moves a card between columns", async ({ page }) => {
   );
   await page.mouse.up();
   await expect(targetColumn.getByTestId("card-card-1")).toBeVisible();
+});
+
+test("updates the board through the AI sidebar", async ({ page }) => {
+  await signIn(page);
+  await page.getByLabel("Message").fill("Create a launch notes card");
+  await page.getByRole("button", { name: "Send" }).click();
+
+  await expect(page.getByText("Created AI launch notes.")).toBeVisible();
+  await expect(page.getByTestId("card-card-ai").getByText("AI launch notes")).toBeVisible();
+});
+
+test("keeps the chat sidebar usable on mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await signIn(page);
+
+  await expect(page.getByRole("heading", { name: "Board Assistant" })).toBeVisible();
+  await expect(page.getByLabel("Message")).toBeVisible();
+  await expect(page.locator('[data-testid^="column-"]').first()).toBeVisible();
 });
