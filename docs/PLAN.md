@@ -255,26 +255,26 @@ Goal: verify the backend can call DeepSeek through the native API.
 
 ### Tasks
 
-- [ ] Load `DEEPSEEK_API_KEY` from the project root `.env`.
-- [ ] Add a small backend service for DeepSeek calls.
-- [ ] Use model `deepseek-v4-pro`.
-- [ ] Add a test-only or development-only endpoint/command for a simple connectivity check.
-- [ ] Run a simple `2+2` test to verify the model responds.
-- [ ] Avoid logging secrets.
-- [ ] Document required environment variables.
+- [x] Load `DEEPSEEK_API_KEY` from the project root `.env`.
+- [x] Add a small backend service for DeepSeek calls.
+- [x] Use model `deepseek-v4-pro`.
+- [x] Add a test-only or development-only endpoint/command for a simple connectivity check.
+- [x] Run a simple `2+2` test to verify the model responds.
+- [x] Avoid logging secrets.
+- [x] Document required environment variables.
 
 ### Tests
 
-- [ ] Run backend unit tests with the DeepSeek client mocked.
-- [ ] Run the real connectivity check when `DEEPSEEK_API_KEY` is available.
-- [ ] Verify missing API key produces a clear local error.
+- [x] Run backend unit tests with the DeepSeek client mocked.
+- [x] Run the real connectivity check when `DEEPSEEK_API_KEY` is available.
+- [x] Verify missing API key produces a clear local error.
 
 ### Success Criteria
 
-- [ ] Backend can make a real DeepSeek call when configured.
-- [ ] The `2+2` check returns a sensible answer.
-- [ ] Tests do not require a real API key unless explicitly marked as connectivity tests.
-- [ ] Secrets are not printed in logs.
+- [x] Backend can make a real DeepSeek call when configured.
+- [x] The `2+2` check returns a sensible answer.
+- [x] Tests do not require a real API key unless explicitly marked as connectivity tests.
+- [x] Secrets are not printed in logs.
 
 ## Phase 9: AI Kanban Structured Output
 

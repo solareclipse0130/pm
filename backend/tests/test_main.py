@@ -1,12 +1,20 @@
 from pathlib import Path
+from typing import Callable
 
 from fastapi.testclient import TestClient
 
+from app.deepseek import DeepSeekAPIError, DeepSeekConfigurationError
 from app.main import create_app
 from app.storage import create_default_board
 
 
-def build_client(static_dir: Path, database_path: Path | None = None) -> TestClient:
+def build_client(
+    static_dir: Path,
+    database_path: Path | None = None,
+    deepseek_check: Callable[[], dict[str, str]] | None = None,
+) -> TestClient:
+    if deepseek_check:
+        return TestClient(create_app(static_dir, database_path, deepseek_check))
     return TestClient(create_app(static_dir, database_path))
 
 
@@ -91,3 +99,43 @@ def test_board_api_rejects_invalid_board(tmp_path: Path) -> None:
     assert response.json()["detail"] == (
         "Every cardIds entry must refer to an existing card."
     )
+
+
+def test_deepseek_check_returns_mocked_answer() -> None:
+    client = build_client(
+        Path("unused"),
+        deepseek_check=lambda: {"model": "deepseek-v4-pro", "answer": "4"},
+    )
+
+    response = client.get("/api/dev/deepseek-check")
+
+    assert response.status_code == 200
+    assert response.json() == {"model": "deepseek-v4-pro", "answer": "4"}
+
+
+def test_deepseek_check_reports_missing_api_key() -> None:
+    def missing_key() -> dict[str, str]:
+        raise DeepSeekConfigurationError(
+            "DEEPSEEK_API_KEY is not configured. Set it in the project root .env."
+        )
+
+    client = build_client(Path("unused"), deepseek_check=missing_key)
+
+    response = client.get("/api/dev/deepseek-check")
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "DEEPSEEK_API_KEY is not configured. Set it in the project root .env."
+    )
+
+
+def test_deepseek_check_reports_api_error() -> None:
+    def api_error() -> dict[str, str]:
+        raise DeepSeekAPIError("DeepSeek API request failed.")
+
+    client = build_client(Path("unused"), deepseek_check=api_error)
+
+    response = client.get("/api/dev/deepseek-check")
+
+    assert response.status_code == 502
+    assert response.json()["detail"] == "DeepSeek API request failed."
