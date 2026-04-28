@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.deepseek import DeepSeekAPIError, DeepSeekConfigurationError
 from app.main import create_app
-from app.storage import create_default_board
+from app.storage import create_default_board, save_board
 
 
 def build_client(
@@ -211,6 +211,43 @@ def test_ai_chat_saves_valid_board_update(tmp_path: Path) -> None:
     assert client.get("/api/board").json()["cards"]["card-1"]["title"] == (
         "AI edited title"
     )
+
+
+def test_ai_chat_rejects_update_when_board_changed_during_ai_call(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "app.db"
+
+    def ai_completion(messages: list[dict[str, str]]) -> str:
+        concurrent_board = create_default_board("2026-01-01T00:00:00Z")
+        concurrent_board["columns"][0]["title"] = "Changed elsewhere"
+        save_board(database_path, concurrent_board)
+
+        ai_board = create_default_board("2026-01-01T00:00:00Z")
+        ai_board["cards"]["card-1"]["title"] = "AI edited title"
+        return json.dumps(
+            {
+                "assistantMessage": "Updated the card.",
+                "board": ai_board,
+                "operationSummary": "Renamed card-1.",
+            }
+        )
+
+    client = build_client(
+        Path("unused"),
+        database_path,
+        ai_completion=ai_completion,
+    )
+
+    response = client.post("/api/ai/chat", json={"message": "Rename card one"})
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == (
+        "Board changed while the AI was responding. Please retry the request."
+    )
+    saved_board = client.get("/api/board").json()
+    assert saved_board["columns"][0]["title"] == "Changed elsewhere"
+    assert saved_board["cards"]["card-1"]["title"] == "Align roadmap themes"
 
 
 def test_ai_chat_rejects_invalid_ai_board_without_saving(tmp_path: Path) -> None:

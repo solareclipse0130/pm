@@ -22,6 +22,11 @@ def test_validate_user_message_rejects_empty_text() -> None:
         validate_user_message("   ")
 
 
+def test_validate_user_message_rejects_oversized_text() -> None:
+    with pytest.raises(ValueError, match="2000"):
+        validate_user_message("x" * 2001)
+
+
 def test_validate_history_accepts_user_and_assistant_messages() -> None:
     history = [
         {"role": "user", "content": "Hello"},
@@ -29,6 +34,25 @@ def test_validate_history_accepts_user_and_assistant_messages() -> None:
     ]
 
     assert validate_history(history) == history
+
+
+def test_validate_history_keeps_recent_bounded_context() -> None:
+    history = [
+        {"role": "user", "content": f"message-{index}"}
+        for index in range(14)
+    ]
+
+    validated = validate_history(history)
+
+    assert len(validated) == 12
+    assert validated[0]["content"] == "message-2"
+    assert validated[-1]["content"] == "message-13"
+
+
+def test_validate_history_trims_long_content() -> None:
+    validated = validate_history([{"role": "user", "content": "x" * 2001}])
+
+    assert len(validated[0]["content"]) == 2000
 
 
 def test_validate_history_rejects_unknown_roles() -> None:
@@ -133,6 +157,20 @@ def test_parse_ai_response_accepts_card_move_update() -> None:
 def test_parse_ai_response_rejects_invalid_json() -> None:
     with pytest.raises(AIResponseError, match="valid JSON"):
         parse_ai_response("not json")
+
+
+def test_parse_ai_response_rejects_extra_or_missing_keys() -> None:
+    with pytest.raises(AIResponseError, match="assistantMessage, board"):
+        parse_ai_response(
+            json.dumps(
+                {
+                    "assistantMessage": "Updated.",
+                    "board": None,
+                    "operationSummary": None,
+                    "extra": "not allowed",
+                }
+            )
+        )
 
 
 def test_parse_ai_response_rejects_invalid_board_update() -> None:

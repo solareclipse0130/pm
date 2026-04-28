@@ -14,6 +14,15 @@ export type AiChatResponse = {
   history: ChatMessage[];
 };
 
+const readErrorDetail = async (response: Response): Promise<string> => {
+  try {
+    const body = await response.json();
+    return typeof body.detail === "string" ? body.detail : "";
+  } catch {
+    return "";
+  }
+};
+
 export const sendAiMessage = async (
   message: string,
   history: ChatMessage[]
@@ -25,7 +34,8 @@ export const sendAiMessage = async (
   });
 
   if (!response.ok) {
-    throw new Error("Unable to reach AI assistant.");
+    const detail = await readErrorDetail(response);
+    throw new Error(detail || "Unable to reach AI assistant.");
   }
 
   return response.json();

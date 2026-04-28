@@ -183,9 +183,11 @@ export const KanbanBoard = () => {
         setBoard(response.board);
         setSaveStatus("idle");
       }
-    } catch {
+    } catch (error) {
       setChatHistory(chatHistory);
-      setAiError("Unable to reach AI assistant.");
+      setAiError(
+        error instanceof Error ? error.message : "Unable to reach AI assistant."
+      );
     } finally {
       setIsAiSending(false);
     }

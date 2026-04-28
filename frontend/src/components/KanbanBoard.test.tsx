@@ -162,4 +162,35 @@ describe("KanbanBoard", () => {
       expect(screen.getByText("Unable to reach AI assistant.")).toBeInTheDocument();
     });
   });
+
+  it("shows backend AI error details when available", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (input.toString().includes("/api/ai/chat")) {
+          return Response.json(
+            {
+              detail:
+                "Board changed while the AI was responding. Please retry the request.",
+            },
+            { status: 409 }
+          );
+        }
+        return Response.json(cloneBoard());
+      })
+    );
+    render(<KanbanBoard />);
+
+    await screen.findByRole("heading", { name: "Board Assistant" });
+    await userEvent.type(screen.getByLabelText("Message"), "Help");
+    await userEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Board changed while the AI was responding. Please retry the request."
+        )
+      ).toBeInTheDocument();
+    });
+  });
 });

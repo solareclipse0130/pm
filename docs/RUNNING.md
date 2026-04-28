@@ -30,6 +30,10 @@ The app is available at `http://localhost:9000` by default. Set `PORT` before ru
 
 Set `DEEPSEEK_API_KEY` in the project root `.env` for AI calls. The backend also accepts the same variable from the process environment.
 
+## Sign In
+
+The MVP login is local-only and hardcoded to `user` / `password`. It is not production authentication. See `docs/AUTH.md` for the current boundary and future production work.
+
 ## DeepSeek Check
 
 With the app running, check AI connectivity:

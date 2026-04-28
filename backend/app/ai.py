@@ -8,6 +8,11 @@ from app.storage import validate_board
 
 CompletionFn = Callable[[list[dict[str, str]]], str]
 
+MAX_USER_MESSAGE_LENGTH = 2000
+MAX_HISTORY_ITEMS = 12
+MAX_HISTORY_CONTENT_LENGTH = 2000
+REQUIRED_RESPONSE_KEYS = {"assistantMessage", "board", "operationSummary"}
+
 SYSTEM_PROMPT = """You help manage a Kanban board for a project management app.
 Return only valid JSON with this exact shape:
 {
@@ -17,7 +22,14 @@ Return only valid JSON with this exact shape:
 }
 Set "board" to a full updated Kanban board JSON object only when the user asks
 for a card or column change. Otherwise leave "board" as null. Preserve the
-existing board schema exactly. Do not invent extra top-level keys."""
+existing board schema exactly. Do not invent extra top-level keys.
+
+When changing the board:
+- Keep the existing columns unless the user explicitly asks to rename a column.
+- Preserve existing card ids and timestamps for cards that are not changed.
+- Use a new unique card id for every new card.
+- Ensure every card appears in exactly one column.
+- If the request is ambiguous, ask a clarifying question and leave "board" null."""
 
 
 class AIResponseError(ValueError):
@@ -40,14 +52,19 @@ def validate_history(history: Any) -> list[dict[str, str]]:
             raise ValueError("History role must be user or assistant.")
         if not isinstance(content, str):
             raise ValueError("History content must be a string.")
-        validated.append({"role": role, "content": content})
-    return validated
+        validated.append({"role": role, "content": content[:MAX_HISTORY_CONTENT_LENGTH]})
+    return validated[-MAX_HISTORY_ITEMS:]
 
 
 def validate_user_message(message: Any) -> str:
     if not isinstance(message, str) or not message.strip():
         raise ValueError("Message must be a non-empty string.")
-    return message.strip()
+    user_message = message.strip()
+    if len(user_message) > MAX_USER_MESSAGE_LENGTH:
+        raise ValueError(
+            f"Message must be {MAX_USER_MESSAGE_LENGTH} characters or fewer."
+        )
+    return user_message
 
 
 def build_ai_messages(
@@ -79,6 +96,10 @@ def parse_ai_response(content: str) -> dict[str, Any]:
 
     if not isinstance(parsed, dict):
         raise AIResponseError("AI response must be an object.")
+    if set(parsed) != REQUIRED_RESPONSE_KEYS:
+        raise AIResponseError(
+            "AI response must include only assistantMessage, board, and operationSummary."
+        )
 
     assistant_message = parsed.get("assistantMessage")
     if not isinstance(assistant_message, str) or not assistant_message.strip():

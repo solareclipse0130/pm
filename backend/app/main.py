@@ -73,6 +73,15 @@ def create_app(
             )
             updated_board = ai_response["board"]
             if updated_board is not None:
+                latest_board = get_or_create_board(db_path)
+                if latest_board != current_board:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=(
+                            "Board changed while the AI was responding. "
+                            "Please retry the request."
+                        ),
+                    )
                 save_board(db_path, updated_board)
 
             next_history = [
