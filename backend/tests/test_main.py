@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import Callable
 
@@ -12,10 +13,16 @@ def build_client(
     static_dir: Path,
     database_path: Path | None = None,
     deepseek_check: Callable[[], dict[str, str]] | None = None,
+    ai_completion: Callable[[list[dict[str, str]]], str] | None = None,
 ) -> TestClient:
-    if deepseek_check:
-        return TestClient(create_app(static_dir, database_path, deepseek_check))
-    return TestClient(create_app(static_dir, database_path))
+    return TestClient(
+        create_app(
+            static_dir,
+            database_path,
+            deepseek_check=deepseek_check,
+            ai_completion=ai_completion,
+        )
+    )
 
 
 def test_index_serves_static_kanban_html(tmp_path: Path) -> None:
@@ -139,3 +146,105 @@ def test_deepseek_check_reports_api_error() -> None:
 
     assert response.status_code == 502
     assert response.json()["detail"] == "DeepSeek API request failed."
+
+
+def test_ai_chat_returns_reply_without_board_update(tmp_path: Path) -> None:
+    def ai_completion(messages: list[dict[str, str]]) -> str:
+        assert any("Current Kanban board JSON" in message["content"] for message in messages)
+        return json.dumps(
+            {
+                "assistantMessage": "Nothing to change.",
+                "board": None,
+                "operationSummary": None,
+            }
+        )
+
+    client = build_client(
+        Path("unused"),
+        tmp_path / "app.db",
+        ai_completion=ai_completion,
+    )
+
+    response = client.post(
+        "/api/ai/chat",
+        json={
+            "message": "What is on my board?",
+            "history": [{"role": "assistant", "content": "Ready."}],
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["assistantMessage"] == "Nothing to change."
+    assert body["board"] is None
+    assert body["history"] == [
+        {"role": "assistant", "content": "Ready."},
+        {"role": "user", "content": "What is on my board?"},
+        {"role": "assistant", "content": "Nothing to change."},
+    ]
+
+
+def test_ai_chat_saves_valid_board_update(tmp_path: Path) -> None:
+    database_path = tmp_path / "app.db"
+
+    def ai_completion(messages: list[dict[str, str]]) -> str:
+        board = create_default_board("2026-01-01T00:00:00Z")
+        board["cards"]["card-1"]["title"] = "AI edited title"
+        return json.dumps(
+            {
+                "assistantMessage": "Updated the card.",
+                "board": board,
+                "operationSummary": "Renamed card-1.",
+            }
+        )
+
+    client = build_client(
+        Path("unused"),
+        database_path,
+        ai_completion=ai_completion,
+    )
+
+    response = client.post("/api/ai/chat", json={"message": "Rename card one"})
+
+    assert response.status_code == 200
+    assert response.json()["board"]["cards"]["card-1"]["title"] == "AI edited title"
+    assert client.get("/api/board").json()["cards"]["card-1"]["title"] == (
+        "AI edited title"
+    )
+
+
+def test_ai_chat_rejects_invalid_ai_board_without_saving(tmp_path: Path) -> None:
+    database_path = tmp_path / "app.db"
+
+    def ai_completion(messages: list[dict[str, str]]) -> str:
+        board = create_default_board("2026-01-01T00:00:00Z")
+        board["columns"][0]["cardIds"].append("missing-card")
+        return json.dumps(
+            {
+                "assistantMessage": "Updated the board.",
+                "board": board,
+                "operationSummary": None,
+            }
+        )
+
+    client = build_client(
+        Path("unused"),
+        database_path,
+        ai_completion=ai_completion,
+    )
+    original_title = client.get("/api/board").json()["cards"]["card-1"]["title"]
+
+    response = client.post("/api/ai/chat", json={"message": "Create a broken update"})
+
+    assert response.status_code == 502
+    assert "AI board update is invalid" in response.json()["detail"]
+    assert client.get("/api/board").json()["cards"]["card-1"]["title"] == original_title
+
+
+def test_ai_chat_rejects_invalid_request(tmp_path: Path) -> None:
+    client = build_client(Path("unused"), tmp_path / "app.db")
+
+    response = client.post("/api/ai/chat", json={"message": "   "})
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Message must be a non-empty string."

@@ -282,36 +282,36 @@ Goal: send board context and chat history to the AI and accept structured respon
 
 ### Tasks
 
-- [ ] Define the AI request payload:
-  - [ ] current Kanban JSON
-  - [ ] user question
-  - [ ] conversation history
-- [ ] Define the AI structured response format:
-  - [ ] assistant message
-  - [ ] optional Kanban update
-  - [ ] optional explanation or operation summary if useful
-- [ ] Implement backend prompt construction.
-- [ ] Validate AI responses before changing the database.
-- [ ] Apply AI board updates only after validation passes.
-- [ ] Store or return conversation history according to the simplest MVP approach.
-- [ ] Add tests for AI response parsing, valid updates, invalid updates, and no-update replies.
+- [x] Define the AI request payload:
+  - [x] current Kanban JSON
+  - [x] user question
+  - [x] conversation history
+- [x] Define the AI structured response format:
+  - [x] assistant message
+  - [x] optional Kanban update
+  - [x] optional explanation or operation summary if useful
+- [x] Implement backend prompt construction.
+- [x] Validate AI responses before changing the database.
+- [x] Apply AI board updates only after validation passes.
+- [x] Store or return conversation history according to the simplest MVP approach.
+- [x] Add tests for AI response parsing, valid updates, invalid updates, and no-update replies.
 
 ### Tests
 
-- [ ] Run backend unit tests with mocked AI responses.
-- [ ] Test card creation through structured output.
-- [ ] Test card editing through structured output.
-- [ ] Test card movement through structured output.
-- [ ] Test invalid AI output is rejected without changing the board.
-- [ ] Run a real AI smoke test when `DEEPSEEK_API_KEY` is available.
+- [x] Run backend unit tests with mocked AI responses.
+- [x] Test card creation through structured output.
+- [x] Test card editing through structured output.
+- [x] Test card movement through structured output.
+- [x] Test invalid AI output is rejected without changing the board.
+- [x] Run a real AI smoke test when `DEEPSEEK_API_KEY` is available.
 
 ### Success Criteria
 
-- [ ] AI receives the current board, user message, and conversation context.
-- [ ] AI can return a user-facing response without changing the board.
-- [ ] AI can return a valid board update that is saved.
-- [ ] Invalid AI updates do not corrupt persisted data.
-- [ ] Tests pass.
+- [x] AI receives the current board, user message, and conversation context.
+- [x] AI can return a user-facing response without changing the board.
+- [x] AI can return a valid board update that is saved.
+- [x] Invalid AI updates do not corrupt persisted data.
+- [x] Tests pass.
 
 ## Phase 10: AI Chat Sidebar
 

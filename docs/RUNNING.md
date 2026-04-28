@@ -39,3 +39,5 @@ curl http://localhost:9000/api/dev/deepseek-check
 ```
 
 The response includes the model and answer only. It must not include the API key.
+
+The AI chat backend endpoint is `POST /api/ai/chat`. See `docs/AI.md` for the request and response shape.

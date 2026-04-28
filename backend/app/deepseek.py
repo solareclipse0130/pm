@@ -58,6 +58,7 @@ def create_chat_completion(
     messages: list[dict[str, str]],
     *,
     api_key: str | None = None,
+    response_format: dict[str, str] | None = None,
     timeout: float = 30.0,
 ) -> str:
     resolved_api_key = api_key or get_deepseek_api_key()
@@ -67,6 +68,8 @@ def create_chat_completion(
         "thinking": {"type": "disabled"},
         "stream": False,
     }
+    if response_format:
+        payload["response_format"] = response_format
     headers = {
         "Authorization": f"Bearer {resolved_api_key}",
         "Content-Type": "application/json",

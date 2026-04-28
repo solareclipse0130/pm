@@ -5,6 +5,7 @@ This directory contains the FastAPI backend for the Project Management MVP.
 ## Structure
 
 - `app/main.py` defines the FastAPI app.
+- `app/ai.py` builds AI prompts and validates structured Kanban responses.
 - `app/deepseek.py` contains the DeepSeek API client and connectivity check.
 - `app/storage.py` contains SQLite persistence and Kanban board validation.
 - `static/` holds the static site served at `/`; Docker replaces it with the built NextJS export.

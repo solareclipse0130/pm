@@ -90,6 +90,41 @@ def test_create_chat_completion_posts_to_deepseek(
     assert captured["timeout"] == 5.0
 
 
+def test_create_chat_completion_sends_response_format(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_post(
+        url: str,
+        *,
+        headers: dict[str, str],
+        json: dict[str, object],
+        timeout: float,
+    ) -> httpx.Response:
+        captured["json"] = json
+        return build_response(
+            200,
+            json={"choices": [{"message": {"content": "{}"}}]},
+        )
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+
+    create_chat_completion(
+        [{"role": "user", "content": "Return JSON."}],
+        api_key="secret-key",
+        response_format={"type": "json_object"},
+    )
+
+    assert captured["json"] == {
+        "model": DEEPSEEK_MODEL,
+        "messages": [{"role": "user", "content": "Return JSON."}],
+        "thinking": {"type": "disabled"},
+        "stream": False,
+        "response_format": {"type": "json_object"},
+    }
+
+
 def test_create_chat_completion_maps_http_errors(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
