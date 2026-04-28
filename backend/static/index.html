@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Project Management MVP</title>
+    <style>
+      :root {
+        color: #032147;
+        font-family: Arial, sans-serif;
+      }
+
+      body {
+        align-items: center;
+        background: #f7f9fb;
+        display: flex;
+        justify-content: center;
+        margin: 0;
+        min-height: 100vh;
+      }
+
+      main {
+        background: #ffffff;
+        border-top: 4px solid #ecad0a;
+        box-shadow: 0 12px 30px rgb(3 33 71 / 10%);
+        max-width: 520px;
+        padding: 32px;
+        width: calc(100% - 48px);
+      }
+
+      h1 {
+        font-size: 32px;
+        margin: 0 0 12px;
+      }
+
+      p {
+        color: #888888;
+        line-height: 1.5;
+        margin: 0 0 20px;
+      }
+
+      code {
+        color: #753991;
+        font-weight: 700;
+      }
+
+      #health {
+        color: #209dd7;
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Hello world</h1>
+      <p>The FastAPI scaffold is serving static HTML at <code>/</code>.</p>
+      <p>API health: <span id="health">checking...</span></p>
+    </main>
+    <script>
+      fetch("/api/health")
+        .then((response) => response.json())
+        .then((data) => {
+          document.querySelector("#health").textContent = data.status;
+        })
+        .catch(() => {
+          document.querySelector("#health").textContent = "unavailable";
+        });
+    </script>
+  </body>
+</html>
