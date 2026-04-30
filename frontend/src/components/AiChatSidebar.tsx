@@ -3,6 +3,8 @@
 import { FormEvent, useState } from "react";
 import type { ChatMessage } from "@/lib/aiApi";
 
+const MESSAGE_MAX_LENGTH = 2000;
+
 type AiChatSidebarProps = {
   messages: ChatMessage[];
   isSending: boolean;
@@ -78,17 +80,28 @@ export const AiChatSidebar = ({
         <textarea
           id="ai-message"
           value={message}
-          onChange={(event) => setMessage(event.target.value)}
+          onChange={(event) =>
+            setMessage(event.target.value.slice(0, MESSAGE_MAX_LENGTH))
+          }
+          maxLength={MESSAGE_MAX_LENGTH}
           className="min-h-24 resize-none rounded-2xl border border-[var(--stroke)] px-4 py-3 text-sm leading-6 text-[var(--navy-dark)] outline-none transition focus:border-[var(--primary-blue)]"
           placeholder="Create a launch notes card"
         />
-        <button
-          type="submit"
-          disabled={isSending || !message.trim()}
-          className="rounded-2xl bg-[var(--secondary-purple)] px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Send
-        </button>
+        <div className="flex items-center justify-between gap-3">
+          <p
+            className="text-xs font-semibold text-[var(--gray-text)]"
+            data-testid="ai-message-counter"
+          >
+            {message.length}/{MESSAGE_MAX_LENGTH}
+          </p>
+          <button
+            type="submit"
+            disabled={isSending || !message.trim()}
+            className="rounded-2xl bg-[var(--secondary-purple)] px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Send
+          </button>
+        </div>
       </form>
     </aside>
   );

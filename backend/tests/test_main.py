@@ -130,7 +130,7 @@ def test_deepseek_check_reports_missing_api_key() -> None:
 
     response = client.get("/api/dev/deepseek-check")
 
-    assert response.status_code == 400
+    assert response.status_code == 503
     assert response.json()["detail"] == (
         "DEEPSEEK_API_KEY is not configured. Set it in the project root .env."
     )

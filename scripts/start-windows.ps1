@@ -1,3 +1,7 @@
+# Windows PowerShell entry point for the local Docker app.
+# Docker Desktop on Windows abstracts host UID/GID so the image is built with
+# its default APP_UID/APP_GID and bind mounts work via the WSL/Hyper-V layer.
+
 $RootDir = Resolve-Path (Join-Path $PSScriptRoot "..")
 $ImageName = "pm-mvp"
 $ContainerName = "pm-mvp"
@@ -32,11 +36,31 @@ if (Test-Path $EnvFile) {
 }
 
 try {
-    docker run -d --name $ContainerName -p "${Port}:8000" -v "${DataDir}:/app/data" @EnvArgs $ImageName
+    docker run -d --name $ContainerName -p "${Port}:8000" -v "${DataDir}:/app/data" @EnvArgs $ImageName | Out-Null
 } finally {
     if ($TempEnvFile) {
         Remove-Item $TempEnvFile -ErrorAction SilentlyContinue
     }
 }
 
-Write-Output "Server running at http://localhost:$Port"
+# Wait for the FastAPI health endpoint before declaring the server ready.
+$ready = $false
+for ($i = 0; $i -lt 60; $i++) {
+    try {
+        $response = Invoke-WebRequest -Uri "http://127.0.0.1:${Port}/api/health" -UseBasicParsing -TimeoutSec 3
+        if ($response.StatusCode -eq 200) {
+            $ready = $true
+            break
+        }
+    } catch {
+        # Not ready yet.
+    }
+    Start-Sleep -Milliseconds 500
+}
+
+if ($ready) {
+    Write-Output "Server running at http://localhost:$Port"
+} else {
+    Write-Error "Container started but /api/health did not respond within 30s. Check 'docker logs $ContainerName'."
+    exit 1
+}

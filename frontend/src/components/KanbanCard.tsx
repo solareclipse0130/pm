@@ -20,12 +20,20 @@ export const KanbanCard = ({
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(card.title);
   const [details, setDetails] = useState(card.details);
+  const [titleError, setTitleError] = useState("");
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: card.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+  };
+
+  const exitEdit = () => {
+    setTitle(card.title);
+    setDetails(card.details);
+    setTitleError("");
+    setIsEditing(false);
   };
 
   return (
@@ -49,19 +57,39 @@ export const KanbanCard = ({
             className="w-full space-y-3"
             onSubmit={(event) => {
               event.preventDefault();
-              if (!title.trim()) {
+              const trimmedTitle = title.trim();
+              if (!trimmedTitle) {
+                setTitleError("Title cannot be empty.");
                 return;
               }
-              onUpdate(card.id, title.trim(), details.trim());
+              onUpdate(card.id, trimmedTitle, details.trim());
+              setTitleError("");
               setIsEditing(false);
             }}
           >
             <input
               value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              className="w-full rounded-xl border border-[var(--stroke)] px-3 py-2 text-sm font-semibold text-[var(--navy-dark)] outline-none focus:border-[var(--primary-blue)]"
+              onChange={(event) => {
+                setTitle(event.target.value);
+                if (titleError) {
+                  setTitleError("");
+                }
+              }}
+              className={clsx(
+                "w-full rounded-xl border px-3 py-2 text-sm font-semibold text-[var(--navy-dark)] outline-none focus:border-[var(--primary-blue)]",
+                titleError ? "border-red-300" : "border-[var(--stroke)]"
+              )}
               aria-label={`Edit title for ${card.title}`}
+              aria-invalid={titleError ? "true" : "false"}
             />
+            {titleError && (
+              <p
+                role="alert"
+                className="text-xs font-semibold text-red-700"
+              >
+                {titleError}
+              </p>
+            )}
             <textarea
               value={details}
               onChange={(event) => setDetails(event.target.value)}
@@ -78,11 +106,7 @@ export const KanbanCard = ({
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setTitle(card.title);
-                  setDetails(card.details);
-                  setIsEditing(false);
-                }}
+                onClick={exitEdit}
                 className="rounded-full border border-[var(--stroke)] px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[var(--gray-text)]"
               >
                 Cancel

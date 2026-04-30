@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -23,6 +23,14 @@ import {
   type BoardData,
 } from "@/lib/kanban";
 
+type LoadStatus = "loading" | "loaded" | "error";
+type SaveStatus = "idle" | "saving" | "error";
+
+type BoardChanges = {
+  changedCardIds: Set<string>;
+  changedColumnIds: Set<string>;
+};
+
 const getCardPositions = (board: BoardData) =>
   new Map(
     board.columns.flatMap((column) =>
@@ -33,15 +41,16 @@ const getCardPositions = (board: BoardData) =>
     )
   );
 
-const getChangedCardIds = (previous: BoardData, next: BoardData) => {
-  const changed = new Set<string>();
+const getBoardChanges = (previous: BoardData, next: BoardData): BoardChanges => {
+  const changedCardIds = new Set<string>();
+  const changedColumnIds = new Set<string>();
   const previousPositions = getCardPositions(previous);
   const nextPositions = getCardPositions(next);
 
   for (const [cardId, card] of Object.entries(next.cards)) {
     const previousCard = previous.cards[cardId];
     if (!previousCard) {
-      changed.add(cardId);
+      changedCardIds.add(cardId);
       continue;
     }
     if (
@@ -49,17 +58,27 @@ const getChangedCardIds = (previous: BoardData, next: BoardData) => {
       previousCard.details !== card.details ||
       previousPositions.get(cardId) !== nextPositions.get(cardId)
     ) {
-      changed.add(cardId);
+      changedCardIds.add(cardId);
     }
   }
 
-  return changed;
+  const previousColumnsById = new Map(
+    previous.columns.map((column) => [column.id, column])
+  );
+  for (const column of next.columns) {
+    const previousColumn = previousColumnsById.get(column.id);
+    if (!previousColumn || previousColumn.title !== column.title) {
+      changedColumnIds.add(column.id);
+    }
+  }
+
+  return { changedCardIds, changedColumnIds };
 };
 
 export const KanbanBoard = () => {
   const [board, setBoard] = useState<BoardData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "error">("idle");
+  const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [isAiSending, setIsAiSending] = useState(false);
@@ -67,6 +86,12 @@ export const KanbanBoard = () => {
   const [highlightedCardIds, setHighlightedCardIds] = useState<Set<string>>(
     new Set()
   );
+  const [highlightedColumnIds, setHighlightedColumnIds] = useState<Set<string>>(
+    new Set()
+  );
+
+  const saveQueueRef = useRef<Promise<unknown>>(Promise.resolve());
+  const pendingSavesRef = useRef(0);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -83,17 +108,12 @@ export const KanbanBoard = () => {
       .then((loadedBoard) => {
         if (isMounted) {
           setBoard(loadedBoard);
-          setSaveStatus("idle");
+          setLoadStatus("loaded");
         }
       })
       .catch(() => {
         if (isMounted) {
-          setSaveStatus("error");
-        }
-      })
-      .finally(() => {
-        if (isMounted) {
-          setIsLoading(false);
+          setLoadStatus("error");
         }
       });
 
@@ -103,15 +123,16 @@ export const KanbanBoard = () => {
   }, []);
 
   useEffect(() => {
-    if (highlightedCardIds.size === 0) {
+    if (highlightedCardIds.size === 0 && highlightedColumnIds.size === 0) {
       return;
     }
     const timeoutId = window.setTimeout(() => {
       setHighlightedCardIds(new Set());
+      setHighlightedColumnIds(new Set());
     }, 4000);
 
     return () => window.clearTimeout(timeoutId);
-  }, [highlightedCardIds]);
+  }, [highlightedCardIds, highlightedColumnIds]);
 
   const updateBoard = (updater: (board: BoardData) => BoardData) => {
     if (!board) {
@@ -119,15 +140,23 @@ export const KanbanBoard = () => {
     }
     const nextBoard = updater(board);
     setBoard(nextBoard);
+    pendingSavesRef.current += 1;
     setSaveStatus("saving");
-    saveBoard(nextBoard)
-      .then((savedBoard) => {
-        setBoard(savedBoard);
-        setSaveStatus("idle");
-      })
-      .catch(() => {
-        setSaveStatus("error");
-      });
+
+    saveQueueRef.current = saveQueueRef.current
+      .then(() => saveBoard(nextBoard))
+      .then(
+        () => {
+          pendingSavesRef.current -= 1;
+          if (pendingSavesRef.current === 0) {
+            setSaveStatus("idle");
+          }
+        },
+        () => {
+          pendingSavesRef.current -= 1;
+          setSaveStatus("error");
+        }
+      );
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -227,9 +256,15 @@ export const KanbanBoard = () => {
       const response = await sendAiMessage(message, chatHistory);
       setChatHistory(response.history);
       if (response.board) {
-        setHighlightedCardIds(board ? getChangedCardIds(board, response.board) : new Set());
+        if (board) {
+          const changes = getBoardChanges(board, response.board);
+          setHighlightedCardIds(changes.changedCardIds);
+          setHighlightedColumnIds(changes.changedColumnIds);
+        } else {
+          setHighlightedCardIds(new Set());
+          setHighlightedColumnIds(new Set());
+        }
         setBoard(response.board);
-        setSaveStatus("idle");
       }
     } catch (error) {
       setChatHistory(chatHistory);
@@ -243,7 +278,7 @@ export const KanbanBoard = () => {
 
   const activeCard = activeCardId ? cardsById[activeCardId] : null;
 
-  if (isLoading) {
+  if (loadStatus === "loading") {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[var(--surface)] px-6 py-12">
         <p className="text-sm font-semibold text-[var(--gray-text)]">Loading board...</p>
@@ -251,7 +286,7 @@ export const KanbanBoard = () => {
     );
   }
 
-  if (!board) {
+  if (loadStatus === "error" || !board) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[var(--surface)] px-6 py-12">
         <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
@@ -319,6 +354,7 @@ export const KanbanBoard = () => {
                   column={column}
                   cards={column.cardIds.map((cardId) => board.cards[cardId])}
                   highlightedCardIds={highlightedCardIds}
+                  isHighlighted={highlightedColumnIds.has(column.id)}
                   onRename={handleRenameColumn}
                   onAddCard={handleAddCard}
                   onUpdateCard={handleUpdateCard}

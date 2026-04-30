@@ -187,4 +187,5 @@ export const createId = (prefix: string) => {
   return `${prefix}-${randomPart}${timePart}`;
 };
 
-export const createTimestamp = () => new Date().toISOString();
+export const createTimestamp = () =>
+  new Date().toISOString().replace(/\.\d{3}Z$/, "Z");

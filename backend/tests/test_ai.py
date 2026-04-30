@@ -1,9 +1,11 @@
+import asyncio
 import json
 
 import pytest
 
 from app.ai import (
     AIResponseError,
+    MAX_AI_TEXT_LENGTH,
     ask_ai_for_board_update,
     build_ai_messages,
     parse_ai_response,
@@ -203,13 +205,52 @@ def test_ask_ai_for_board_update_uses_mocked_completion() -> None:
             }
         )
 
-    response = ask_ai_for_board_update(
-        board,
-        "Create a backlog card",
-        [],
-        fake_completion,
+    response = asyncio.run(
+        ask_ai_for_board_update(
+            board,
+            "Create a backlog card",
+            [],
+            fake_completion,
+        )
     )
 
     assert response["assistantMessage"] == "Created the card."
     assert response["board"] == board
     assert captured["messages"]
+
+
+def test_ask_ai_for_board_update_supports_async_completion() -> None:
+    board = create_default_board("2026-01-01T00:00:00Z")
+
+    async def fake_completion(messages: list[dict[str, str]]) -> str:
+        return json.dumps(
+            {
+                "assistantMessage": "Async reply.",
+                "board": None,
+                "operationSummary": None,
+            }
+        )
+
+    response = asyncio.run(
+        ask_ai_for_board_update(board, "Hi", [], fake_completion)
+    )
+
+    assert response["assistantMessage"] == "Async reply."
+
+
+def test_parse_ai_response_truncates_long_assistant_text() -> None:
+    long_message = "x" * (MAX_AI_TEXT_LENGTH + 500)
+    long_summary = "y" * (MAX_AI_TEXT_LENGTH + 500)
+
+    response = parse_ai_response(
+        json.dumps(
+            {
+                "assistantMessage": long_message,
+                "board": None,
+                "operationSummary": long_summary,
+            }
+        )
+    )
+
+    assert len(response["assistantMessage"]) == MAX_AI_TEXT_LENGTH
+    assert len(response["operationSummary"]) == MAX_AI_TEXT_LENGTH

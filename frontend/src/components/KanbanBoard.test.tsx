@@ -59,10 +59,12 @@ describe("KanbanBoard", () => {
     await userEvent.type(input, "New Name");
 
     expect(input).toHaveValue("New Name");
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/board",
-      expect.objectContaining({ method: "PUT" })
-    );
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/board",
+        expect.objectContaining({ method: "PUT" })
+      );
+    });
   });
 
   it("adds and removes a card", async () => {

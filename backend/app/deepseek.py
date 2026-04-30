@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+from dotenv import dotenv_values
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 PROJECT_DIR = BASE_DIR.parent
@@ -26,18 +27,12 @@ def read_root_env_value(key: str, env_path: Path | None = None) -> str | None:
     resolved_env_path = env_path or ROOT_ENV_PATH
     if not resolved_env_path.exists():
         return None
-
-    for line in resolved_env_path.read_text(encoding="utf-8").splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#") or "=" not in stripped:
-            continue
-        name, value = stripped.split("=", 1)
-        if name.strip() != key:
-            continue
-        value = value.strip().strip('"').strip("'").strip()
-        return value or None
-
-    return None
+    values = dotenv_values(resolved_env_path)
+    raw = values.get(key)
+    if raw is None:
+        return None
+    value = raw.strip()
+    return value or None
 
 
 def get_deepseek_api_key() -> str:
@@ -54,7 +49,16 @@ def get_deepseek_api_key() -> str:
     )
 
 
-def create_chat_completion(
+async def _post_chat_completion(
+    payload: dict[str, Any],
+    headers: dict[str, str],
+    timeout: float,
+) -> httpx.Response:
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        return await client.post(DEEPSEEK_API_URL, headers=headers, json=payload)
+
+
+async def create_chat_completion(
     messages: list[dict[str, str]],
     *,
     api_key: str | None = None,
@@ -65,6 +69,8 @@ def create_chat_completion(
     payload: dict[str, Any] = {
         "model": DEEPSEEK_MODEL,
         "messages": messages,
+        # Vendor-specific knob: DeepSeek Pro returns lower-latency completions
+        # when the deliberative "thinking" mode is disabled.
         "thinking": {"type": "disabled"},
         "stream": False,
     }
@@ -76,12 +82,7 @@ def create_chat_completion(
     }
 
     try:
-        response = httpx.post(
-            DEEPSEEK_API_URL,
-            headers=headers,
-            json=payload,
-            timeout=timeout,
-        )
+        response = await _post_chat_completion(payload, headers, timeout)
         response.raise_for_status()
     except httpx.HTTPStatusError as error:
         status_code = error.response.status_code
@@ -104,8 +105,8 @@ def create_chat_completion(
     return content.strip()
 
 
-def run_connectivity_check() -> dict[str, str]:
-    answer = create_chat_completion(
+async def run_connectivity_check() -> dict[str, str]:
+    answer = await create_chat_completion(
         [
             {
                 "role": "system",

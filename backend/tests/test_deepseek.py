@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 
 import httpx
@@ -51,37 +52,35 @@ def test_create_chat_completion_posts_to_deepseek(
 ) -> None:
     captured: dict[str, object] = {}
 
-    def fake_post(
-        url: str,
-        *,
+    async def fake_post(
+        payload: dict[str, object],
         headers: dict[str, str],
-        json: dict[str, object],
         timeout: float,
     ) -> httpx.Response:
-        captured["url"] = url
+        captured["payload"] = payload
         captured["headers"] = headers
-        captured["json"] = json
         captured["timeout"] = timeout
         return build_response(
             200,
             json={"choices": [{"message": {"content": "4"}}]},
         )
 
-    monkeypatch.setattr(httpx, "post", fake_post)
+    monkeypatch.setattr("app.deepseek._post_chat_completion", fake_post)
 
-    answer = create_chat_completion(
-        [{"role": "user", "content": "What is 2+2?"}],
-        api_key="secret-key",
-        timeout=5.0,
+    answer = asyncio.run(
+        create_chat_completion(
+            [{"role": "user", "content": "What is 2+2?"}],
+            api_key="secret-key",
+            timeout=5.0,
+        )
     )
 
     assert answer == "4"
-    assert captured["url"] == DEEPSEEK_API_URL
     assert captured["headers"] == {
         "Authorization": "Bearer secret-key",
         "Content-Type": "application/json",
     }
-    assert captured["json"] == {
+    assert captured["payload"] == {
         "model": DEEPSEEK_MODEL,
         "messages": [{"role": "user", "content": "What is 2+2?"}],
         "thinking": {"type": "disabled"},
@@ -95,28 +94,28 @@ def test_create_chat_completion_sends_response_format(
 ) -> None:
     captured: dict[str, object] = {}
 
-    def fake_post(
-        url: str,
-        *,
+    async def fake_post(
+        payload: dict[str, object],
         headers: dict[str, str],
-        json: dict[str, object],
         timeout: float,
     ) -> httpx.Response:
-        captured["json"] = json
+        captured["payload"] = payload
         return build_response(
             200,
             json={"choices": [{"message": {"content": "{}"}}]},
         )
 
-    monkeypatch.setattr(httpx, "post", fake_post)
+    monkeypatch.setattr("app.deepseek._post_chat_completion", fake_post)
 
-    create_chat_completion(
-        [{"role": "user", "content": "Return JSON."}],
-        api_key="secret-key",
-        response_format={"type": "json_object"},
+    asyncio.run(
+        create_chat_completion(
+            [{"role": "user", "content": "Return JSON."}],
+            api_key="secret-key",
+            response_format={"type": "json_object"},
+        )
     )
 
-    assert captured["json"] == {
+    assert captured["payload"] == {
         "model": DEEPSEEK_MODEL,
         "messages": [{"role": "user", "content": "Return JSON."}],
         "thinking": {"type": "disabled"},
@@ -128,41 +127,41 @@ def test_create_chat_completion_sends_response_format(
 def test_create_chat_completion_maps_http_errors(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def fake_post(
-        url: str,
-        *,
+    async def fake_post(
+        payload: dict[str, object],
         headers: dict[str, str],
-        json: dict[str, object],
         timeout: float,
     ) -> httpx.Response:
-        request = httpx.Request("POST", url)
+        request = httpx.Request("POST", DEEPSEEK_API_URL)
         return httpx.Response(401, request=request)
 
-    monkeypatch.setattr(httpx, "post", fake_post)
+    monkeypatch.setattr("app.deepseek._post_chat_completion", fake_post)
 
     with pytest.raises(DeepSeekAPIError, match="HTTP 401"):
-        create_chat_completion(
-            [{"role": "user", "content": "What is 2+2?"}],
-            api_key="secret-key",
+        asyncio.run(
+            create_chat_completion(
+                [{"role": "user", "content": "What is 2+2?"}],
+                api_key="secret-key",
+            )
         )
 
 
 def test_create_chat_completion_rejects_missing_content(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def fake_post(
-        url: str,
-        *,
+    async def fake_post(
+        payload: dict[str, object],
         headers: dict[str, str],
-        json: dict[str, object],
         timeout: float,
     ) -> httpx.Response:
         return build_response(200, json={"choices": []})
 
-    monkeypatch.setattr(httpx, "post", fake_post)
+    monkeypatch.setattr("app.deepseek._post_chat_completion", fake_post)
 
     with pytest.raises(DeepSeekAPIError, match="assistant content"):
-        create_chat_completion(
-            [{"role": "user", "content": "What is 2+2?"}],
-            api_key="secret-key",
+        asyncio.run(
+            create_chat_completion(
+                [{"role": "user", "content": "What is 2+2?"}],
+                api_key="secret-key",
+            )
         )

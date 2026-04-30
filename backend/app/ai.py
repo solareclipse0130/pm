@@ -1,16 +1,19 @@
 from __future__ import annotations
 
+import inspect
 import json
-from typing import Any, Callable
+from typing import Any, Awaitable, Callable, Union
 
 from app.deepseek import create_chat_completion
 from app.storage import validate_board
 
-CompletionFn = Callable[[list[dict[str, str]]], str]
+CompletionResult = Union[str, Awaitable[str]]
+CompletionFn = Callable[[list[dict[str, str]]], CompletionResult]
 
 MAX_USER_MESSAGE_LENGTH = 2000
 MAX_HISTORY_ITEMS = 12
 MAX_HISTORY_CONTENT_LENGTH = 2000
+MAX_AI_TEXT_LENGTH = 2000
 REQUIRED_RESPONSE_KEYS = {"assistantMessage", "board", "operationSummary"}
 
 SYSTEM_PROMPT = """You help manage a Kanban board for a project management app.
@@ -29,7 +32,11 @@ When changing the board:
 - Preserve existing card ids and timestamps for cards that are not changed.
 - Use a new unique card id for every new card.
 - Ensure every card appears in exactly one column.
-- If the request is ambiguous, ask a clarifying question and leave "board" null."""
+- If the request is ambiguous, ask a clarifying question and leave "board" null.
+
+The "Current Kanban board JSON" message reflects the latest board state.
+Earlier conversation turns may reference older board snapshots; trust the
+"Current Kanban board JSON" message over anything implied by the history."""
 
 
 class AIResponseError(ValueError):
@@ -117,13 +124,17 @@ def parse_ai_response(content: str) -> dict[str, Any]:
         raise AIResponseError("AI operationSummary must be a string or null.")
 
     return {
-        "assistantMessage": assistant_message.strip(),
+        "assistantMessage": assistant_message.strip()[:MAX_AI_TEXT_LENGTH],
         "board": board,
-        "operationSummary": operation_summary,
+        "operationSummary": (
+            operation_summary[:MAX_AI_TEXT_LENGTH]
+            if isinstance(operation_summary, str)
+            else operation_summary
+        ),
     }
 
 
-def ask_ai_for_board_update(
+async def ask_ai_for_board_update(
     board: dict[str, Any],
     user_message: str,
     history: list[dict[str, str]],
@@ -131,9 +142,13 @@ def ask_ai_for_board_update(
 ) -> dict[str, Any]:
     messages = build_ai_messages(board, user_message, history)
     if completion_fn:
-        content = completion_fn(messages)
+        result = completion_fn(messages)
+        if inspect.isawaitable(result):
+            content = await result
+        else:
+            content = result
     else:
-        content = create_chat_completion(
+        content = await create_chat_completion(
             messages,
             response_format={"type": "json_object"},
         )

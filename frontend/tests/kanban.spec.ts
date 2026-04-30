@@ -178,7 +178,13 @@ test("persists changes across reloads", async ({ page }) => {
   const firstColumn = page.locator('[data-testid^="column-"]').first();
   const titleInput = firstColumn.getByLabel("Column title");
 
+  const savedResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/board") &&
+      response.request().method() === "PUT"
+  );
   await titleInput.fill("Persisted Backlog");
+  await savedResponse;
   await expect(page.getByText("Changes saved.")).toBeVisible();
   await page.reload();
 
