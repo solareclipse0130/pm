@@ -3,10 +3,14 @@ import { useState, type FormEvent } from "react";
 const initialFormState = { title: "", details: "" };
 
 type NewCardFormProps = {
+  accentColor?: string;
   onAdd: (title: string, details: string) => void;
 };
 
-export const NewCardForm = ({ onAdd }: NewCardFormProps) => {
+export const NewCardForm = ({
+  accentColor = "var(--pacific-blue)",
+  onAdd,
+}: NewCardFormProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [formState, setFormState] = useState(initialFormState);
 
@@ -21,7 +25,7 @@ export const NewCardForm = ({ onAdd }: NewCardFormProps) => {
   };
 
   return (
-    <div className="mt-4">
+    <div className="relative mt-4">
       {isOpen ? (
         <form onSubmit={handleSubmit} className="space-y-3">
           <input
@@ -30,7 +34,7 @@ export const NewCardForm = ({ onAdd }: NewCardFormProps) => {
               setFormState((prev) => ({ ...prev, title: event.target.value }))
             }
             placeholder="Card title"
-            className="w-full rounded-xl border border-[var(--stroke)] bg-white px-3 py-2 text-sm font-medium text-[var(--navy-dark)] outline-none transition focus:border-[var(--primary-blue)]"
+            className="focus-ring w-full rounded-xl border border-[var(--stroke)] bg-white px-3 py-2 text-sm font-semibold text-[var(--deep-sea)] outline-none placeholder:font-medium placeholder:text-[var(--slate)]"
             required
           />
           <textarea
@@ -40,12 +44,17 @@ export const NewCardForm = ({ onAdd }: NewCardFormProps) => {
             }
             placeholder="Details"
             rows={3}
-            className="w-full resize-none rounded-xl border border-[var(--stroke)] bg-white px-3 py-2 text-sm text-[var(--gray-text)] outline-none transition focus:border-[var(--primary-blue)]"
+            className="focus-ring w-full resize-none rounded-xl border border-[var(--stroke)] bg-white px-3 py-2 text-sm leading-6 text-[var(--slate)] outline-none placeholder:text-[var(--slate)]"
           />
           <div className="flex items-center gap-2">
             <button
               type="submit"
-              className="rounded-full bg-[var(--secondary-purple)] px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white transition hover:brightness-110"
+              className="focus-ring rounded-full px-3.5 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white transition hover:brightness-110"
+              style={{
+                background:
+                  "linear-gradient(135deg, var(--pacific-blue), var(--aqua-mist))",
+                boxShadow: "0 8px 18px rgba(123, 196, 188, 0.22)",
+              }}
             >
               Add card
             </button>
@@ -55,7 +64,7 @@ export const NewCardForm = ({ onAdd }: NewCardFormProps) => {
                 setIsOpen(false);
                 setFormState(initialFormState);
               }}
-              className="rounded-full border border-[var(--stroke)] px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[var(--gray-text)] transition hover:text-[var(--navy-dark)]"
+              className="focus-ring rounded-full border border-[var(--stroke)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--slate)] transition hover:border-[var(--stroke-strong)] hover:text-[var(--deep-sea)]"
             >
               Cancel
             </button>
@@ -65,8 +74,16 @@ export const NewCardForm = ({ onAdd }: NewCardFormProps) => {
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="w-full rounded-full border border-dashed border-[var(--stroke)] px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[var(--primary-blue)] transition hover:border-[var(--primary-blue)]"
+          className="focus-ring group/add flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--stroke)] bg-white/60 px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.16em] transition hover:bg-white"
+          style={{ color: accentColor, borderColor: "var(--stroke)" }}
         >
+          <span
+            aria-hidden
+            className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[13px] font-bold leading-none text-white transition-transform duration-200 group-hover/add:rotate-90"
+            style={{ background: accentColor }}
+          >
+            +
+          </span>
           Add a card
         </button>
       )}

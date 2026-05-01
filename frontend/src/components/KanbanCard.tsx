@@ -41,10 +41,11 @@ export const KanbanCard = ({
       ref={setNodeRef}
       style={style}
       className={clsx(
-        "rounded-2xl border border-transparent bg-white px-4 py-4 shadow-[0_12px_24px_rgba(3,33,71,0.08)]",
-        "transition-all duration-150",
-        isHighlighted && "border-[var(--accent-yellow)] ring-2 ring-[var(--accent-yellow)]",
-        isDragging && "opacity-60 shadow-[0_18px_32px_rgba(3,33,71,0.16)]"
+        "group/card relative rounded-2xl border bg-white px-4 py-4 shadow-[0_8px_18px_rgba(15,42,71,0.06)]",
+        "border-[var(--stroke)] transition-all duration-200",
+        !isDragging && !isEditing && "hover:-translate-y-0.5 hover:border-[var(--stroke-strong)] hover:shadow-[0_18px_32px_rgba(15,42,71,0.12)]",
+        isHighlighted && "border-[var(--coral-sunset)] ring-2 ring-[var(--coral-sunset)]",
+        isDragging && "rotate-[0.4deg] opacity-70 shadow-[0_22px_40px_rgba(15,42,71,0.18)]"
       )}
       {...attributes}
       {...listeners}
@@ -55,6 +56,7 @@ export const KanbanCard = ({
         {isEditing ? (
           <form
             className="w-full space-y-3"
+            onPointerDown={(event) => event.stopPropagation()}
             onSubmit={(event) => {
               event.preventDefault();
               const trimmedTitle = title.trim();
@@ -76,7 +78,7 @@ export const KanbanCard = ({
                 }
               }}
               className={clsx(
-                "w-full rounded-xl border px-3 py-2 text-sm font-semibold text-[var(--navy-dark)] outline-none focus:border-[var(--primary-blue)]",
+                "focus-ring w-full rounded-xl border px-3 py-2 text-sm font-semibold text-[var(--deep-sea)] outline-none",
                 titleError ? "border-red-300" : "border-[var(--stroke)]"
               )}
               aria-label={`Edit title for ${card.title}`}
@@ -93,21 +95,26 @@ export const KanbanCard = ({
             <textarea
               value={details}
               onChange={(event) => setDetails(event.target.value)}
-              className="w-full resize-none rounded-xl border border-[var(--stroke)] px-3 py-2 text-sm text-[var(--gray-text)] outline-none focus:border-[var(--primary-blue)]"
+              className="focus-ring w-full resize-none rounded-xl border border-[var(--stroke)] px-3 py-2 text-sm leading-6 text-[var(--slate)] outline-none"
               aria-label={`Edit details for ${card.title}`}
               rows={3}
             />
             <div className="flex items-center gap-2">
               <button
                 type="submit"
-                className="rounded-full bg-[var(--secondary-purple)] px-3 py-2 text-xs font-semibold uppercase tracking-wide text-white"
+                className="focus-ring rounded-full px-3.5 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white transition hover:brightness-110"
+                style={{
+                  background:
+                    "linear-gradient(135deg, var(--pacific-blue), var(--aqua-mist))",
+                  boxShadow: "0 8px 18px rgba(123, 196, 188, 0.22)",
+                }}
               >
                 Save
               </button>
               <button
                 type="button"
                 onClick={exitEdit}
-                className="rounded-full border border-[var(--stroke)] px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[var(--gray-text)]"
+                className="focus-ring rounded-full border border-[var(--stroke)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--slate)] transition hover:border-[var(--stroke-strong)] hover:text-[var(--deep-sea)]"
               >
                 Cancel
               </button>
@@ -116,18 +123,21 @@ export const KanbanCard = ({
         ) : (
           <>
             <div className="min-w-0">
-              <h4 className="break-words font-display text-base font-semibold text-[var(--navy-dark)]">
+              <h4 className="break-words font-display text-base font-semibold leading-snug text-[var(--deep-sea)]">
                 {card.title}
               </h4>
-              <p className="mt-2 break-words text-sm leading-6 text-[var(--gray-text)]">
+              <p className="mt-2 break-words text-sm leading-6 text-[var(--slate)]">
                 {card.details}
               </p>
             </div>
-            <div className="flex shrink-0 flex-col items-end gap-1">
+            <div
+              className="flex shrink-0 flex-col items-end gap-1 opacity-70 transition-opacity duration-200 group-hover/card:opacity-100"
+              onPointerDown={(event) => event.stopPropagation()}
+            >
               <button
                 type="button"
                 onClick={() => setIsEditing(true)}
-                className="rounded-full border border-transparent px-2 py-1 text-xs font-semibold text-[var(--gray-text)] transition hover:border-[var(--stroke)] hover:text-[var(--navy-dark)]"
+                className="focus-ring rounded-full border border-transparent px-2.5 py-1 text-xs font-semibold text-[var(--slate)] transition hover:border-[var(--stroke)] hover:bg-[var(--surface-muted)] hover:text-[var(--pacific-blue)]"
                 aria-label={`Edit ${card.title}`}
               >
                 Edit
@@ -135,7 +145,7 @@ export const KanbanCard = ({
               <button
                 type="button"
                 onClick={() => onDelete(card.id)}
-                className="rounded-full border border-transparent px-2 py-1 text-xs font-semibold text-[var(--gray-text)] transition hover:border-[var(--stroke)] hover:text-[var(--navy-dark)]"
+                className="focus-ring rounded-full border border-transparent px-2.5 py-1 text-xs font-semibold text-[var(--slate)] transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
                 aria-label={`Delete ${card.title}`}
               >
                 Remove

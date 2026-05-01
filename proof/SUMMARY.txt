@@ -1,0 +1,14 @@
+Logout 修复验证 — 2026-05-01T18:20:42.907Z
+
+[A1] 有 session 时打开页面进入主界面: true
+[A2] logout 按钮 bbox: {"x":1333,"y":12,"width":83,"height":38}
+[A3] logout 按钮中心点之上的元素: BUTTON#-.focus-ring rounded-full border border-[var(--stroke)] bg-whi text="Logout"
+[A4] 点击 logout 后:
+      - 登录界面可见: true
+      - Kanban Studio 主界面可见: false
+      - localStorage["pm-mvp-authenticated"]: null
+[B1] 重新登录后看到主界面: true
+[H1] hydration 错误数量: 0
+[H2] 所有 pageerror: []
+
+通过条件：A1=true,  A4 登录界面=true & 主界面=false & localStorage=null,  B1=true,  H1=0

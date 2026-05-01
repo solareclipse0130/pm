@@ -32,13 +32,19 @@ For the MVP, this will run locally (in a docker container)
 
 A working MVP of the frontend has been built and is already in frontend. This is not yet designed for the Docker setup. It's a pure frontend-only demo.
 
-## Color Scheme
+## Color Scheme — "Coastal Calm"
 
-- Accent Yellow: `#ecad0a` - accent lines, highlights
-- Blue Primary: `#209dd7` - links, key sections
-- Purple Secondary: `#753991` - submit buttons, important actions
-- Dark Navy: `#032147` - main headings
-- Gray Text: `#888888` - supporting text, labels
+Cool blue-cyan family with a coral accent and a warm sand neutral to balance the palette.
+
+- Deep Sea: `#0F2A47` (Pantone 19-4023 TCX Dark Sapphire) - main headings, primary text, deep surfaces
+- Pacific Blue: `#0085A1` (Pantone 17-4730 TCX Caribbean Sea) - brand primary, CTAs, links, focus rings
+- Aqua Mist: `#7BC4BC` (Pantone 14-4814 TCX Pool Blue) - secondary highlight, badges, gradient mid-tone
+- Coral Sunset: `#F2715E` (Pantone 16-1546 TCX Living Coral) - complementary accent, warnings, attention dots
+- Sand Dune: `#F4E1C1` (Pantone 13-1006 TCX Cream Tan) - warm neutral, soft surface tint, hover backgrounds
+- Slate: `#6B7A8F` (Pantone 16-3915 TCX Alloy) - supporting text, labels, secondary content
+- Foam: `#EAF3F4` - page background, palest cool surface
+
+CSS variable names (in `frontend/src/app/globals.css`): `--deep-sea`, `--pacific-blue`, `--aqua-mist`, `--coral-sunset`, `--sand-dune`, `--slate`, `--foam`.
 
 ## Coding standards
 

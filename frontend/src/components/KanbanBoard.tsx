@@ -31,6 +31,17 @@ type BoardChanges = {
   changedColumnIds: Set<string>;
 };
 
+const COLUMN_ACCENTS = [
+  "var(--pacific-blue)",
+  "var(--aqua-mist)",
+  "var(--coral-sunset)",
+  "var(--deep-sea)",
+  "var(--pacific-blue)",
+] as const;
+
+const getAccent = (index: number) =>
+  COLUMN_ACCENTS[index % COLUMN_ACCENTS.length];
+
 const getCardPositions = (board: BoardData) =>
   new Map(
     board.columns.flatMap((column) =>
@@ -280,15 +291,18 @@ export const KanbanBoard = () => {
 
   if (loadStatus === "loading") {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[var(--surface)] px-6 py-12">
-        <p className="text-sm font-semibold text-[var(--gray-text)]">Loading board...</p>
+      <main className="flex min-h-screen items-center justify-center px-6 py-12">
+        <div className="flex items-center gap-3 rounded-full border border-[var(--stroke)] bg-white/80 px-5 py-3 shadow-[var(--shadow-soft)]">
+          <span className="pulse-dot h-2 w-2 rounded-full bg-[var(--pacific-blue)]" />
+          <p className="text-sm font-semibold text-[var(--deep-sea)]">Loading board...</p>
+        </div>
       </main>
     );
   }
 
   if (loadStatus === "error" || !board) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[var(--surface)] px-6 py-12">
+      <main className="flex min-h-screen items-center justify-center px-6 py-12">
         <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
           Unable to load board.
         </p>
@@ -296,51 +310,116 @@ export const KanbanBoard = () => {
     );
   }
 
+  const totalCards = Object.keys(board.cards).length;
+  const doneCardIds = new Set(board.columns[board.columns.length - 1]?.cardIds ?? []);
+  const completionRatio = totalCards === 0 ? 0 : doneCardIds.size / totalCards;
+  const completionPct = Math.round(completionRatio * 100);
+
+  let saveLabel = "All changes saved";
+  let saveDotClass = "bg-emerald-500";
+  let saveDescription = "Changes saved.";
+  if (saveStatus === "saving") {
+    saveLabel = "Saving changes";
+    saveDotClass = "bg-[var(--pacific-blue)] pulse-dot";
+    saveDescription = "Saving changes...";
+  } else if (saveStatus === "error") {
+    saveLabel = "Save failed";
+    saveDotClass = "bg-red-500";
+    saveDescription = "Unable to save board.";
+  }
+
   return (
     <div className="relative overflow-hidden">
-      <main className="relative mx-auto flex min-h-screen max-w-[1700px] flex-col gap-10 px-6 pb-16 pt-12">
-        <header className="flex flex-col gap-6 rounded-[32px] border border-[var(--stroke)] bg-white/80 p-8 shadow-[var(--shadow)] backdrop-blur">
-          <div className="flex flex-wrap items-start justify-between gap-6">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[var(--gray-text)]">
+      <main className="relative mx-auto flex min-h-screen max-w-[1700px] flex-col gap-8 px-6 pb-16 pt-10">
+        <header className="relative overflow-hidden rounded-[32px] border border-[var(--stroke)] surface-glass p-8 shadow-[var(--shadow)]">
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full opacity-60 blur-3xl"
+            style={{
+              background: "radial-gradient(circle, rgba(0,133,161,0.35), transparent 70%)",
+            }}
+          />
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -bottom-32 -left-16 h-72 w-72 rounded-full opacity-50 blur-3xl"
+            style={{
+              background: "radial-gradient(circle, rgba(123,196,188,0.28), transparent 70%)",
+            }}
+          />
+
+          <div className="relative flex flex-wrap items-start justify-between gap-6">
+            <div className="max-w-2xl">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[var(--stroke)] bg-white/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.32em] text-[var(--slate)]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[var(--coral-sunset)]" />
                 Single Board Kanban
-              </p>
-              <h1 className="mt-3 font-display text-4xl font-semibold text-[var(--navy-dark)]">
-                Kanban Studio
+              </div>
+              <h1 className="mt-4 font-display text-4xl font-semibold leading-tight text-[var(--deep-sea)] md:text-5xl">
+                <span className="shimmer-text">Kanban Studio</span>
               </h1>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--gray-text)]">
+              <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--slate)]">
                 Keep momentum visible. Rename columns, drag cards between stages,
                 and capture quick notes without getting buried in settings.
               </p>
             </div>
-            <div className="rounded-2xl border border-[var(--stroke)] bg-[var(--surface)] px-5 py-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--gray-text)]">
-                Focus
-              </p>
-              <p className="mt-2 text-lg font-semibold text-[var(--primary-blue)]">
-                {saveStatus === "saving" ? "Saving changes..." : "Changes saved."}
-              </p>
-              {saveStatus === "error" && (
-                <p className="mt-2 text-sm font-semibold text-red-700">
-                  Unable to save board.
+
+            <div className="flex flex-col items-end gap-3">
+              <div
+                className="inline-flex items-center gap-2 rounded-full border border-[var(--stroke)] bg-white/80 px-4 py-2 text-xs font-semibold text-[var(--deep-sea)] shadow-[var(--shadow-soft)]"
+                aria-live="polite"
+                aria-label={saveLabel}
+              >
+                <span className={`h-2 w-2 rounded-full ${saveDotClass}`} />
+                <span className="uppercase tracking-[0.18em]">{saveLabel}</span>
+              </div>
+              <div className="rounded-2xl border border-[var(--stroke)] bg-white/85 px-5 py-4 shadow-[var(--shadow-soft)]">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.32em] text-[var(--slate)]">
+                  Focus
                 </p>
-              )}
+                <p className="mt-1 text-lg font-semibold text-[var(--pacific-blue)]">
+                  {saveDescription}
+                </p>
+                <div className="mt-3 flex items-center gap-3">
+                  <div className="h-1.5 w-32 overflow-hidden rounded-full bg-[var(--surface-muted)]">
+                    <div
+                      className="h-full rounded-full transition-[width] duration-500"
+                      style={{
+                        width: `${completionPct}%`,
+                        background:
+                          "linear-gradient(90deg, var(--pacific-blue), var(--aqua-mist))",
+                      }}
+                    />
+                  </div>
+                  <span className="text-xs font-semibold tabular-nums text-[var(--deep-sea)]">
+                    {doneCardIds.size}/{totalCards} done
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-4">
-            {board.columns.map((column) => (
-              <div
-                key={column.id}
-                className="flex items-center gap-2 rounded-full border border-[var(--stroke)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--navy-dark)]"
-              >
-                <span className="h-2 w-2 rounded-full bg-[var(--accent-yellow)]" />
-                {column.title}
-              </div>
-            ))}
+
+          <div className="relative mt-6 flex flex-wrap items-center gap-3">
+            {board.columns.map((column, index) => {
+              const accent = getAccent(index);
+              return (
+                <div
+                  key={column.id}
+                  className="flex items-center gap-2 rounded-full border border-[var(--stroke)] bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--deep-sea)] transition hover:border-[var(--stroke-strong)] hover:bg-white"
+                >
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ background: accent }}
+                  />
+                  {column.title}
+                  <span className="ml-1 rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-[10px] font-semibold tabular-nums text-[var(--slate)]">
+                    {column.cardIds.length}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </header>
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <DndContext
             sensors={sensors}
             collisionDetection={closestCorners}
@@ -348,13 +427,15 @@ export const KanbanBoard = () => {
             onDragEnd={handleDragEnd}
           >
             <section className="grid gap-6 lg:grid-cols-2 2xl:grid-cols-5">
-              {board.columns.map((column) => (
+              {board.columns.map((column, index) => (
                 <KanbanColumn
                   key={column.id}
                   column={column}
                   cards={column.cardIds.map((cardId) => board.cards[cardId])}
                   highlightedCardIds={highlightedCardIds}
                   isHighlighted={highlightedColumnIds.has(column.id)}
+                  accentColor={getAccent(index)}
+                  columnIndex={index}
                   onRename={handleRenameColumn}
                   onAddCard={handleAddCard}
                   onUpdateCard={handleUpdateCard}

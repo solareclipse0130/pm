@@ -65,8 +65,9 @@ From root `AGENTS.md` (binding):
 - Root-cause first: when something breaks, prove the cause with evidence before changing code. Don't guess-fix.
 - Confirm current package versions from official sources before adding/upgrading deps.
 - Preserve user changes already in the worktree.
-- Color scheme (use these exact hex values for any new UI):
-  - Accent yellow `#ecad0a`, blue primary `#209dd7`, purple secondary `#753991`, dark navy `#032147`, gray text `#888888`.
+- Color scheme — "Coastal Calm" (use these exact hex values for any new UI):
+  - Deep Sea `#0F2A47` (text/deep surfaces), Pacific Blue `#0085A1` (primary/CTA), Aqua Mist `#7BC4BC` (secondary highlight), Coral Sunset `#F2715E` (complementary accent/warnings), Sand Dune `#F4E1C1` (warm neutral), Slate `#6B7A8F` (supporting text), Foam `#EAF3F4` (page background).
+  - CSS variable names in `frontend/src/app/globals.css`: `--deep-sea`, `--pacific-blue`, `--aqua-mist`, `--coral-sunset`, `--sand-dune`, `--slate`, `--foam`.
 
 Backend specifics: keep routes small and explicit, responses predictable, no secret logging, prefer plain functions over layers.
 
