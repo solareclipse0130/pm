@@ -53,7 +53,7 @@ export const NewCardForm = ({
               style={{
                 background:
                   "linear-gradient(135deg, var(--pacific-blue), var(--aqua-mist))",
-                boxShadow: "0 8px 18px rgba(123, 196, 188, 0.22)",
+                boxShadow: "0 8px 18px rgba(132, 160, 176, 0.22)",
               }}
             >
               Add card

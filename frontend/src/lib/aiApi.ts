@@ -1,6 +1,5 @@
-import type { BoardData } from "@/lib/kanban";
-
-const AI_CHAT_API_PATH = "/api/ai/chat";
+import { apiFetch } from "@/lib/authClient";
+import type { BoardDetail } from "@/lib/boardApi";
 
 export type ChatMessage = {
   role: "user" | "assistant";
@@ -9,7 +8,7 @@ export type ChatMessage = {
 
 export type AiChatResponse = {
   assistantMessage: string;
-  board: BoardData | null;
+  board: BoardDetail | null;
   operationSummary: string | null;
   history: ChatMessage[];
 };
@@ -24,12 +23,12 @@ const readErrorDetail = async (response: Response): Promise<string> => {
 };
 
 export const sendAiMessage = async (
+  boardId: number,
   message: string,
   history: ChatMessage[]
 ): Promise<AiChatResponse> => {
-  const response = await fetch(AI_CHAT_API_PATH, {
+  const response = await apiFetch(`/api/boards/${boardId}/ai/chat`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message, history }),
   });
 

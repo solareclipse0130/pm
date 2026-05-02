@@ -6,7 +6,7 @@ type KanbanCardPreviewProps = {
 
 export const KanbanCardPreview = ({ card }: KanbanCardPreviewProps) => (
   <article
-    className="rotate-[1deg] rounded-2xl border border-[var(--stroke-strong)] bg-white/95 px-4 py-4 shadow-[0_24px_48px_rgba(15,42,71,0.22)] backdrop-blur"
+    className="rotate-[1deg] rounded-2xl border border-[var(--stroke-strong)] bg-white/95 px-4 py-4 shadow-[0_24px_48px_rgba(31,48,85,0.22)] backdrop-blur"
   >
     <div className="flex items-start justify-between gap-3">
       <div>

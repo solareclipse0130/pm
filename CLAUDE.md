@@ -4,9 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Local-only Project Management MVP: a NextJS Kanban frontend statically exported and served by a FastAPI backend, with a DeepSeek-powered AI chat sidebar that can create/edit/move cards. Everything runs in a single Docker container with SQLite persistence.
+Local-only Project Management app: a NextJS Kanban frontend statically exported and served by a FastAPI backend, with a DeepSeek-powered AI chat sidebar that can create/edit/move cards. Everything runs in a single Docker container with SQLite persistence.
 
-Authoritative product scope and constraints live in the root `AGENTS.md`. Phase-by-phase task history lives in `docs/PLAN.md` (all phases are complete; treat it as a record, not a TODO list).
+The app supports real multi-user accounts (signup/login with hashed passwords + bearer-token sessions) and multiple boards per user. The legacy MVP credentials `user` / `password` are still seeded on first init for convenience.
+
+Authoritative product scope and constraints live in the root `AGENTS.md`. Phase-by-phase task history lives in `docs/PLAN.md` (treat it as a historical record, not a TODO list).
 
 ## Common Commands
 
@@ -40,22 +42,33 @@ The Dockerfile is two-stage: stage 1 (`node:24`) runs `next build` to produce `f
 ### Backend (`backend/app/`)
 Four modules, intentionally flat:
 - `main.py` — `create_app()` factory wires routes and accepts injectable `database_path`, `deepseek_check`, and `ai_completion` for tests. The module-level `app = create_app()` is what uvicorn loads.
-- `storage.py` — SQLite init, the `users`/`boards` schema (board stored as JSON in `boards.data`), default-board creation for the MVP user, and board-shape validation. Schema and validation rules are documented in `docs/DATABASE.md` — keep them in sync.
+- `storage.py` — SQLite init, schema (users/sessions/boards), password hashing (scrypt), session token issuance/resolution, board CRUD with optimistic concurrency, and board-JSON validation. Storage helpers raise `StorageError` / `AuthError` / `NotFoundError` / `ConflictError` (all subclasses of `ValueError`).
 - `ai.py` — Prompt construction, structured-response parsing, and validation of the AI's `{assistantMessage, board, operationSummary}` payload. Caps history to 12 messages and 2000 chars per message; user messages also capped at 2000 chars.
-- `deepseek.py` — Thin DeepSeek HTTP client, reads `DEEPSEEK_API_KEY` from project root `.env` or the process env. Raises `DeepSeekConfigurationError` (missing key → 400) vs `DeepSeekAPIError` (upstream failure → 502).
+- `deepseek.py` — Thin DeepSeek HTTP client, reads `DEEPSEEK_API_KEY` from project root `.env` or the process env. Raises `DeepSeekConfigurationError` vs `DeepSeekAPIError`.
 
-Key request flow for `POST /api/ai/chat`: load current board → call DeepSeek → validate response → re-read board and **reject with 409 if it changed mid-flight** → save. This optimistic check is the only conflict-handling in the MVP; do not weaken it.
+API surface (all `/api/...`):
+- Auth: `POST /auth/signup`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `PUT /auth/profile`, `PUT /auth/password`, `GET /auth/sessions`. Authenticated endpoints expect `Authorization: Bearer <token>`.
+- Boards: `GET /boards`, `POST /boards`, `GET /boards/{id}`, `PATCH /boards/{id}` (title/description), `PUT /boards/{id}/data` (full board JSON), `DELETE /boards/{id}`, `PUT /boards/order` (reorder).
+- AI chat: `POST /boards/{id}/ai/chat`. Same optimistic-concurrency guard as before — load current board, call DeepSeek, re-read, **409 if board changed mid-flight**, then save. Do not weaken this.
+
+Card JSON (in `boards.data`) supports optional fields: `priority` (`low`/`medium`/`high`/`urgent` or null), `dueDate` (`YYYY-MM-DD` or null), `labels` (string array, ≤10 entries, ≤40 chars each), `assignee` (username string or null). `storage.normalize_board` fills missing fields with safe defaults so legacy payloads still validate.
+
+Schema migrations: `PRAGMA user_version` tracks schema; `_migrate_legacy_v0` rebuilds the legacy single-board-per-user `boards` table when an older DB is found. Tests in `tests/test_boards.py::test_initialize_database_migrates_legacy_single_board_schema` exercise the path.
 
 ### Frontend (`frontend/src/`)
-- `app/page.tsx` — Top-level entry; gates on the local sign-in.
-- `components/AppShell.tsx` — Layout, login gate, board state, chat sidebar wiring.
-- `components/Kanban*.tsx` — DnD-kit board, columns, cards.
-- `components/AiChatSidebar.tsx` — Chat UI; on each AI reply that includes a `board`, replaces the visible board.
-- `lib/kanban.ts` — Board shape, default board (column/card ids must match the backend default in `storage.py`), and movement helpers.
-- `lib/boardApi.ts` / `lib/aiApi.ts` — Fetch wrappers for `/api/board` and `/api/ai/chat`.
+- `app/page.tsx` — Top-level entry.
+- `components/AppShell.tsx` — Login + signup form, session restore, hands off to `Workspace` when authenticated.
+- `components/Workspace.tsx` — Loads boards list, manages selected board id (persisted in `localStorage`), wires `BoardSwitcher` and `KanbanBoard`.
+- `components/BoardSwitcher.tsx` — Sidebar with create/rename/delete/select per board.
+- `components/Kanban*.tsx` — DnD-kit board/columns/cards. `KanbanBoard` now takes a `board: BoardDetail` prop and an `onBoardChanged` callback (no internal fetch).
+- `components/AiChatSidebar.tsx` — Chat UI; per-board, scoped via `KanbanBoard`.
+- `lib/authClient.ts` — `login`/`signup`/`logout`/`fetchCurrentUser`/`apiFetch`; persists session token in `localStorage` under `pm-session-v1` and injects `Authorization` header on every `apiFetch`.
+- `lib/boardApi.ts` — list/get/create/update/delete/reorder for boards.
+- `lib/aiApi.ts` — `sendAiMessage(boardId, message, history)`.
+- `lib/kanban.ts` — Board/Card types (with priority/labels/dueDate/assignee extensions), `moveCard`, id/timestamp helpers.
 
-### Auth boundary (important)
-Login is hardcoded `user` / `password` on the frontend only. The backend uses a fixed MVP username `user` for persistence and **does not enforce any session/token on API routes**. See `docs/AUTH.md`. Do not pretend this is real auth; if you add features that imply multi-user isolation, flag the gap rather than silently relying on the boundary.
+### Auth boundary
+Real authentication: passwords stored as `scrypt$N$r$p$salt$hash`, sessions are random `secrets.token_urlsafe(32)` strings with 30-day TTL kept in the `sessions` table. Backend dependencies enforce `Authorization: Bearer <token>` on every authenticated route and 401 on missing/expired tokens. The MVP user (`user`/`password`) is still auto-seeded for convenience. `docs/AUTH.md` is out of date — believe the code.
 
 ## Conventions
 
@@ -65,9 +78,9 @@ From root `AGENTS.md` (binding):
 - Root-cause first: when something breaks, prove the cause with evidence before changing code. Don't guess-fix.
 - Confirm current package versions from official sources before adding/upgrading deps.
 - Preserve user changes already in the worktree.
-- Color scheme — "Coastal Calm" (use these exact hex values for any new UI):
-  - Deep Sea `#0F2A47` (text/deep surfaces), Pacific Blue `#0085A1` (primary/CTA), Aqua Mist `#7BC4BC` (secondary highlight), Coral Sunset `#F2715E` (complementary accent/warnings), Sand Dune `#F4E1C1` (warm neutral), Slate `#6B7A8F` (supporting text), Foam `#EAF3F4` (page background).
-  - CSS variable names in `frontend/src/app/globals.css`: `--deep-sea`, `--pacific-blue`, `--aqua-mist`, `--coral-sunset`, `--sand-dune`, `--slate`, `--foam`.
+- Color scheme — "Harbor & Ember" (low-saturation Pantone blues + brick red; use these exact hex values for any new UI):
+  - Deep Sea `#1F3055` (text/deep surfaces, Pantone 19-3919 Insignia Blue), Pacific Blue `#487090` (primary/CTA, Pantone 18-4032 Riverside), Aqua Mist `#84A0B0` (secondary highlight, Pantone 14-4214 Stone Blue), Coral Sunset `#B5544A` (red emphasis/warnings, Pantone 18-1547 Aurora Red), Sand Dune `#EDE0CC` (warm neutral, Pantone 13-1010 Vanilla Cream), Slate `#888B8D` (supporting text, Pantone 16-3915 Alloy), Foam `#E2E8E5` (page background, Pantone 12-4302 Glacier Lake).
+  - CSS variable names in `frontend/src/app/globals.css`: `--deep-sea`, `--pacific-blue`, `--aqua-mist`, `--coral-sunset`, `--sand-dune`, `--slate`, `--foam` (kept from the prior "Coastal Calm" palette so class names continue to work).
 
 Backend specifics: keep routes small and explicit, responses predictable, no secret logging, prefer plain functions over layers.
 

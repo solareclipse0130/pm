@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -15,7 +15,7 @@ import { AiChatSidebar } from "@/components/AiChatSidebar";
 import { KanbanColumn } from "@/components/KanbanColumn";
 import { KanbanCardPreview } from "@/components/KanbanCardPreview";
 import { sendAiMessage, type ChatMessage } from "@/lib/aiApi";
-import { loadBoard, saveBoard } from "@/lib/boardApi";
+import { updateBoardData, type BoardDetail } from "@/lib/boardApi";
 import {
   createId,
   createTimestamp,
@@ -23,12 +23,17 @@ import {
   type BoardData,
 } from "@/lib/kanban";
 
-type LoadStatus = "loading" | "loaded" | "error";
 type SaveStatus = "idle" | "saving" | "error";
 
 type BoardChanges = {
   changedCardIds: Set<string>;
   changedColumnIds: Set<string>;
+};
+
+type KanbanBoardProps = {
+  board: BoardDetail;
+  onBoardChanged: (board: BoardDetail) => void;
+  boardSwitcher?: ReactNode;
 };
 
 const COLUMN_ACCENTS = [
@@ -42,9 +47,9 @@ const COLUMN_ACCENTS = [
 const getAccent = (index: number) =>
   COLUMN_ACCENTS[index % COLUMN_ACCENTS.length];
 
-const getCardPositions = (board: BoardData) =>
+const getCardPositions = (data: BoardData) =>
   new Map(
-    board.columns.flatMap((column) =>
+    data.columns.flatMap((column) =>
       column.cardIds.map((cardId, index) => [
         cardId,
         `${column.id}:${index}`,
@@ -67,6 +72,11 @@ const getBoardChanges = (previous: BoardData, next: BoardData): BoardChanges => 
     if (
       previousCard.title !== card.title ||
       previousCard.details !== card.details ||
+      previousCard.priority !== card.priority ||
+      previousCard.dueDate !== card.dueDate ||
+      previousCard.assignee !== card.assignee ||
+      JSON.stringify(previousCard.labels ?? []) !==
+        JSON.stringify(card.labels ?? []) ||
       previousPositions.get(cardId) !== nextPositions.get(cardId)
     ) {
       changedCardIds.add(cardId);
@@ -86,9 +96,12 @@ const getBoardChanges = (previous: BoardData, next: BoardData): BoardChanges => 
   return { changedCardIds, changedColumnIds };
 };
 
-export const KanbanBoard = () => {
-  const [board, setBoard] = useState<BoardData | null>(null);
-  const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
+export const KanbanBoard = ({
+  board: detail,
+  onBoardChanged,
+  boardSwitcher,
+}: KanbanBoardProps) => {
+  const [data, setData] = useState<BoardData>(detail.data);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
@@ -103,6 +116,10 @@ export const KanbanBoard = () => {
 
   const saveQueueRef = useRef<Promise<unknown>>(Promise.resolve());
   const pendingSavesRef = useRef(0);
+  const onBoardChangedRef = useRef(onBoardChanged);
+  onBoardChangedRef.current = onBoardChanged;
+  const detailRef = useRef(detail);
+  detailRef.current = detail;
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -110,28 +127,21 @@ export const KanbanBoard = () => {
     })
   );
 
-  const cardsById = useMemo(() => board?.cards ?? {}, [board?.cards]);
-
+  // Reset chat + highlight when switching boards. We intentionally key on
+  // `detail.id` rather than `detail.data` so transient saves don't blow away
+  // the chat panel; the next effect keeps `data` itself in sync.
   useEffect(() => {
-    let isMounted = true;
+    setChatHistory([]);
+    setAiError("");
+    setHighlightedCardIds(new Set());
+    setHighlightedColumnIds(new Set());
+  }, [detail.id]);
 
-    loadBoard()
-      .then((loadedBoard) => {
-        if (isMounted) {
-          setBoard(loadedBoard);
-          setLoadStatus("loaded");
-        }
-      })
-      .catch(() => {
-        if (isMounted) {
-          setLoadStatus("error");
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  // Keep local data in sync with parent when the parent reports a change
+  // sourced elsewhere (AI reply, board switch, ...).
+  useEffect(() => {
+    setData(detail.data);
+  }, [detail]);
 
   useEffect(() => {
     if (highlightedCardIds.size === 0 && highlightedColumnIds.size === 0) {
@@ -141,33 +151,35 @@ export const KanbanBoard = () => {
       setHighlightedCardIds(new Set());
       setHighlightedColumnIds(new Set());
     }, 4000);
-
     return () => window.clearTimeout(timeoutId);
   }, [highlightedCardIds, highlightedColumnIds]);
 
-  const updateBoard = (updater: (board: BoardData) => BoardData) => {
-    if (!board) {
-      return;
-    }
-    const nextBoard = updater(board);
-    setBoard(nextBoard);
+  const cardsById = useMemo(() => data.cards, [data.cards]);
+
+  const persistData = (next: BoardData) => {
     pendingSavesRef.current += 1;
     setSaveStatus("saving");
-
     saveQueueRef.current = saveQueueRef.current
-      .then(() => saveBoard(nextBoard))
+      .then(() => updateBoardData(detailRef.current.id, next))
       .then(
-        () => {
+        (saved) => {
           pendingSavesRef.current -= 1;
           if (pendingSavesRef.current === 0) {
             setSaveStatus("idle");
           }
+          onBoardChangedRef.current(saved);
         },
         () => {
           pendingSavesRef.current -= 1;
           setSaveStatus("error");
         }
       );
+  };
+
+  const updateData = (updater: (current: BoardData) => BoardData) => {
+    const next = updater(data);
+    setData(next);
+    persistData(next);
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -177,19 +189,17 @@ export const KanbanBoard = () => {
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveCardId(null);
-
     if (!over || active.id === over.id) {
       return;
     }
-
-    updateBoard((prev) => ({
+    updateData((prev) => ({
       ...prev,
       columns: moveCard(prev.columns, active.id as string, over.id as string),
     }));
   };
 
   const handleRenameColumn = (columnId: string, title: string) => {
-    updateBoard((prev) => ({
+    updateData((prev) => ({
       ...prev,
       columns: prev.columns.map((column) =>
         column.id === columnId ? { ...column, title } : column
@@ -200,7 +210,7 @@ export const KanbanBoard = () => {
   const handleAddCard = (columnId: string, title: string, details: string) => {
     const id = createId("card");
     const now = createTimestamp();
-    updateBoard((prev) => ({
+    updateData((prev) => ({
       ...prev,
       cards: {
         ...prev.cards,
@@ -210,6 +220,10 @@ export const KanbanBoard = () => {
           details: details || "No details yet.",
           createdAt: now,
           updatedAt: now,
+          priority: null,
+          dueDate: null,
+          labels: [],
+          assignee: null,
         },
       },
       columns: prev.columns.map((column) =>
@@ -221,7 +235,7 @@ export const KanbanBoard = () => {
   };
 
   const handleUpdateCard = (cardId: string, title: string, details: string) => {
-    updateBoard((prev) => ({
+    updateData((prev) => ({
       ...prev,
       cards: {
         ...prev.cards,
@@ -236,22 +250,20 @@ export const KanbanBoard = () => {
   };
 
   const handleDeleteCard = (columnId: string, cardId: string) => {
-    updateBoard((prev) => {
-      return {
-        ...prev,
-        cards: Object.fromEntries(
-          Object.entries(prev.cards).filter(([id]) => id !== cardId)
-        ),
-        columns: prev.columns.map((column) =>
-          column.id === columnId
-            ? {
-                ...column,
-                cardIds: column.cardIds.filter((id) => id !== cardId),
-              }
-            : column
-        ),
-      };
-    });
+    updateData((prev) => ({
+      ...prev,
+      cards: Object.fromEntries(
+        Object.entries(prev.cards).filter(([id]) => id !== cardId)
+      ),
+      columns: prev.columns.map((column) =>
+        column.id === columnId
+          ? {
+              ...column,
+              cardIds: column.cardIds.filter((id) => id !== cardId),
+            }
+          : column
+      ),
+    }));
   };
 
   const handleAiMessage = async (message: string) => {
@@ -264,18 +276,16 @@ export const KanbanBoard = () => {
     setAiError("");
 
     try {
-      const response = await sendAiMessage(message, chatHistory);
+      const response = await sendAiMessage(detailRef.current.id, message, chatHistory);
       setChatHistory(response.history);
       if (response.board) {
-        if (board) {
-          const changes = getBoardChanges(board, response.board);
-          setHighlightedCardIds(changes.changedCardIds);
-          setHighlightedColumnIds(changes.changedColumnIds);
-        } else {
-          setHighlightedCardIds(new Set());
-          setHighlightedColumnIds(new Set());
-        }
-        setBoard(response.board);
+        const previous = data;
+        const nextData = response.board.data;
+        const changes = getBoardChanges(previous, nextData);
+        setHighlightedCardIds(changes.changedCardIds);
+        setHighlightedColumnIds(changes.changedColumnIds);
+        setData(nextData);
+        onBoardChangedRef.current(response.board);
       }
     } catch (error) {
       setChatHistory(chatHistory);
@@ -288,30 +298,8 @@ export const KanbanBoard = () => {
   };
 
   const activeCard = activeCardId ? cardsById[activeCardId] : null;
-
-  if (loadStatus === "loading") {
-    return (
-      <main className="flex min-h-screen items-center justify-center px-6 py-12">
-        <div className="flex items-center gap-3 rounded-full border border-[var(--stroke)] bg-white/80 px-5 py-3 shadow-[var(--shadow-soft)]">
-          <span className="pulse-dot h-2 w-2 rounded-full bg-[var(--pacific-blue)]" />
-          <p className="text-sm font-semibold text-[var(--deep-sea)]">Loading board...</p>
-        </div>
-      </main>
-    );
-  }
-
-  if (loadStatus === "error" || !board) {
-    return (
-      <main className="flex min-h-screen items-center justify-center px-6 py-12">
-        <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
-          Unable to load board.
-        </p>
-      </main>
-    );
-  }
-
-  const totalCards = Object.keys(board.cards).length;
-  const doneCardIds = new Set(board.columns[board.columns.length - 1]?.cardIds ?? []);
+  const totalCards = Object.keys(data.cards).length;
+  const doneCardIds = new Set(data.columns[data.columns.length - 1]?.cardIds ?? []);
   const completionRatio = totalCards === 0 ? 0 : doneCardIds.size / totalCards;
   const completionPct = Math.round(completionRatio * 100);
 
@@ -329,37 +317,40 @@ export const KanbanBoard = () => {
   }
 
   return (
-    <div className="relative overflow-hidden">
-      <main className="relative mx-auto flex min-h-screen max-w-[1700px] flex-col gap-8 px-6 pb-16 pt-10">
+    <div className="relative">
+      <main className="relative flex w-full flex-col gap-6 pb-16">
         <header className="relative overflow-hidden rounded-[32px] border border-[var(--stroke)] surface-glass p-8 shadow-[var(--shadow)]">
           <span
             aria-hidden
             className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full opacity-60 blur-3xl"
             style={{
-              background: "radial-gradient(circle, rgba(0,133,161,0.35), transparent 70%)",
+              background: "radial-gradient(circle, rgba(72,112,144,0.32), transparent 70%)",
             }}
           />
           <span
             aria-hidden
             className="pointer-events-none absolute -bottom-32 -left-16 h-72 w-72 rounded-full opacity-50 blur-3xl"
             style={{
-              background: "radial-gradient(circle, rgba(123,196,188,0.28), transparent 70%)",
+              background: "radial-gradient(circle, rgba(132,160,176,0.26), transparent 70%)",
             }}
           />
 
           <div className="relative flex flex-wrap items-start justify-between gap-6">
             <div className="max-w-2xl">
-              <div className="inline-flex items-center gap-2 rounded-full border border-[var(--stroke)] bg-white/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.32em] text-[var(--slate)]">
-                <span className="h-1.5 w-1.5 rounded-full bg-[var(--coral-sunset)]" />
-                Single Board Kanban
-              </div>
+              {boardSwitcher ?? (
+                <div className="inline-flex items-center gap-2 rounded-full border border-[var(--stroke)] bg-white/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.32em] text-[var(--slate)]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--coral-sunset)]" />
+                  {detail.title}
+                </div>
+              )}
               <h1 className="mt-4 font-display text-4xl font-semibold leading-tight text-[var(--deep-sea)] md:text-5xl">
-                <span className="shimmer-text">Kanban Studio</span>
+                <span className="shimmer-text">{detail.title}</span>
               </h1>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--slate)]">
-                Keep momentum visible. Rename columns, drag cards between stages,
-                and capture quick notes without getting buried in settings.
-              </p>
+              {detail.description && (
+                <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--slate)]">
+                  {detail.description}
+                </p>
+              )}
             </div>
 
             <div className="flex flex-col items-end gap-3">
@@ -398,7 +389,7 @@ export const KanbanBoard = () => {
           </div>
 
           <div className="relative mt-6 flex flex-wrap items-center gap-3">
-            {board.columns.map((column, index) => {
+            {data.columns.map((column, index) => {
               const accent = getAccent(index);
               return (
                 <div
@@ -419,19 +410,19 @@ export const KanbanBoard = () => {
           </div>
         </header>
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
           <DndContext
             sensors={sensors}
             collisionDetection={closestCorners}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
           >
-            <section className="grid gap-6 lg:grid-cols-2 2xl:grid-cols-5">
-              {board.columns.map((column, index) => (
+            <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              {data.columns.map((column, index) => (
                 <KanbanColumn
                   key={column.id}
                   column={column}
-                  cards={column.cardIds.map((cardId) => board.cards[cardId])}
+                  cards={column.cardIds.map((cardId) => data.cards[cardId])}
                   highlightedCardIds={highlightedCardIds}
                   isHighlighted={highlightedColumnIds.has(column.id)}
                   accentColor={getAccent(index)}

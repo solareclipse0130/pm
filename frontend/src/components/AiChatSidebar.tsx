@@ -44,7 +44,7 @@ export const AiChatSidebar = ({
         className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full opacity-50 blur-3xl"
         style={{
           background:
-            "radial-gradient(circle, rgba(123,196,188,0.35), transparent 70%)",
+            "radial-gradient(circle, rgba(132,160,176,0.32), transparent 70%)",
         }}
       />
       <span
@@ -52,7 +52,7 @@ export const AiChatSidebar = ({
         className="pointer-events-none absolute -bottom-16 -left-16 h-44 w-44 rounded-full opacity-50 blur-3xl"
         style={{
           background:
-            "radial-gradient(circle, rgba(0,133,161,0.30), transparent 70%)",
+            "radial-gradient(circle, rgba(72,112,144,0.28), transparent 70%)",
         }}
       />
 
@@ -60,7 +60,7 @@ export const AiChatSidebar = ({
         <div className="flex items-center gap-3">
           <span
             aria-hidden
-            className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-[0_8px_18px_rgba(123,196,188,0.32)]"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-[0_8px_18px_rgba(132,160,176,0.30)]"
             style={{
               background:
                 "linear-gradient(135deg, var(--pacific-blue) 0%, var(--aqua-mist) 100%)",
@@ -123,8 +123,8 @@ export const AiChatSidebar = ({
               key={`${item.role}-${index}-${item.content.slice(0, 12)}`}
               className={
                 item.role === "user"
-                  ? "ml-6 break-words rounded-2xl rounded-br-md px-4 py-3 text-sm leading-6 text-white shadow-[0_8px_18px_rgba(0,133,161,0.28)]"
-                  : "mr-6 break-words rounded-2xl rounded-bl-md border border-[var(--stroke)] bg-white/90 px-4 py-3 text-sm leading-6 text-[var(--deep-sea)] shadow-[0_4px_12px_rgba(15,42,71,0.05)]"
+                  ? "ml-6 break-words rounded-2xl rounded-br-md px-4 py-3 text-sm leading-6 text-white shadow-[0_8px_18px_rgba(72,112,144,0.28)]"
+                  : "mr-6 break-words rounded-2xl rounded-bl-md border border-[var(--stroke)] bg-white/90 px-4 py-3 text-sm leading-6 text-[var(--deep-sea)] shadow-[0_4px_12px_rgba(31,48,85,0.05)]"
               }
               style={
                 item.role === "user"
@@ -192,7 +192,7 @@ export const AiChatSidebar = ({
             style={{
               background:
                 "linear-gradient(135deg, var(--pacific-blue) 0%, var(--aqua-mist) 100%)",
-              boxShadow: "0 12px 26px rgba(123, 196, 188, 0.28)",
+              boxShadow: "0 12px 26px rgba(132, 160, 176, 0.28)",
             }}
           >
             Send

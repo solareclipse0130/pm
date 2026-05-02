@@ -41,11 +41,11 @@ export const KanbanCard = ({
       ref={setNodeRef}
       style={style}
       className={clsx(
-        "group/card relative rounded-2xl border bg-white px-4 py-4 shadow-[0_8px_18px_rgba(15,42,71,0.06)]",
+        "group/card relative rounded-2xl border bg-white px-4 py-4 shadow-[0_8px_18px_rgba(31,48,85,0.06)]",
         "border-[var(--stroke)] transition-all duration-200",
-        !isDragging && !isEditing && "hover:-translate-y-0.5 hover:border-[var(--stroke-strong)] hover:shadow-[0_18px_32px_rgba(15,42,71,0.12)]",
+        !isDragging && !isEditing && "hover:-translate-y-0.5 hover:border-[var(--stroke-strong)] hover:shadow-[0_18px_32px_rgba(31,48,85,0.12)]",
         isHighlighted && "border-[var(--coral-sunset)] ring-2 ring-[var(--coral-sunset)]",
-        isDragging && "rotate-[0.4deg] opacity-70 shadow-[0_22px_40px_rgba(15,42,71,0.18)]"
+        isDragging && "rotate-[0.4deg] opacity-70 shadow-[0_22px_40px_rgba(31,48,85,0.18)]"
       )}
       {...attributes}
       {...listeners}
@@ -106,7 +106,7 @@ export const KanbanCard = ({
                 style={{
                   background:
                     "linear-gradient(135deg, var(--pacific-blue), var(--aqua-mist))",
-                  boxShadow: "0 8px 18px rgba(123, 196, 188, 0.22)",
+                  boxShadow: "0 8px 18px rgba(132, 160, 176, 0.22)",
                 }}
               >
                 Save

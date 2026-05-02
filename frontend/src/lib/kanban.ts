@@ -1,10 +1,38 @@
+export type CardPriority = "low" | "medium" | "high" | "urgent";
+
+export const PRIORITY_OPTIONS: CardPriority[] = [
+  "low",
+  "medium",
+  "high",
+  "urgent",
+];
+
 export type Card = {
   id: string;
   title: string;
   details: string;
   createdAt: string;
   updatedAt: string;
+  priority?: CardPriority | null;
+  dueDate?: string | null;
+  labels?: string[];
+  assignee?: string | null;
 };
+
+export const PRIORITY_ACCENT: Record<CardPriority, string> = {
+  low: "var(--aqua-mist)",
+  medium: "var(--pacific-blue)",
+  high: "var(--coral-sunset)",
+  urgent: "var(--coral-sunset)",
+};
+
+export const normalizeCardExtensions = (card: Card): Card => ({
+  ...card,
+  priority: card.priority ?? null,
+  dueDate: card.dueDate ?? null,
+  labels: card.labels ?? [],
+  assignee: card.assignee ?? null,
+});
 
 export type Column = {
   id: string;
@@ -16,79 +44,6 @@ export type BoardData = {
   version: number;
   columns: Column[];
   cards: Record<string, Card>;
-};
-
-export const initialData: BoardData = {
-  version: 1,
-  columns: [
-    { id: "col-backlog", title: "Backlog", cardIds: ["card-1", "card-2"] },
-    { id: "col-discovery", title: "Discovery", cardIds: ["card-3"] },
-    {
-      id: "col-progress",
-      title: "In Progress",
-      cardIds: ["card-4", "card-5"],
-    },
-    { id: "col-review", title: "Review", cardIds: ["card-6"] },
-    { id: "col-done", title: "Done", cardIds: ["card-7", "card-8"] },
-  ],
-  cards: {
-    "card-1": {
-      id: "card-1",
-      title: "Align roadmap themes",
-      details: "Draft quarterly themes with impact statements and metrics.",
-      createdAt: "2026-01-01T00:00:00Z",
-      updatedAt: "2026-01-01T00:00:00Z",
-    },
-    "card-2": {
-      id: "card-2",
-      title: "Gather customer signals",
-      details: "Review support tags, sales notes, and churn feedback.",
-      createdAt: "2026-01-01T00:00:00Z",
-      updatedAt: "2026-01-01T00:00:00Z",
-    },
-    "card-3": {
-      id: "card-3",
-      title: "Prototype analytics view",
-      details: "Sketch initial dashboard layout and key drill-downs.",
-      createdAt: "2026-01-01T00:00:00Z",
-      updatedAt: "2026-01-01T00:00:00Z",
-    },
-    "card-4": {
-      id: "card-4",
-      title: "Refine status language",
-      details: "Standardize column labels and tone across the board.",
-      createdAt: "2026-01-01T00:00:00Z",
-      updatedAt: "2026-01-01T00:00:00Z",
-    },
-    "card-5": {
-      id: "card-5",
-      title: "Design card layout",
-      details: "Add hierarchy and spacing for scanning dense lists.",
-      createdAt: "2026-01-01T00:00:00Z",
-      updatedAt: "2026-01-01T00:00:00Z",
-    },
-    "card-6": {
-      id: "card-6",
-      title: "QA micro-interactions",
-      details: "Verify hover, focus, and loading states.",
-      createdAt: "2026-01-01T00:00:00Z",
-      updatedAt: "2026-01-01T00:00:00Z",
-    },
-    "card-7": {
-      id: "card-7",
-      title: "Ship marketing page",
-      details: "Final copy approved and asset pack delivered.",
-      createdAt: "2026-01-01T00:00:00Z",
-      updatedAt: "2026-01-01T00:00:00Z",
-    },
-    "card-8": {
-      id: "card-8",
-      title: "Close onboarding sprint",
-      details: "Document release notes and share internally.",
-      createdAt: "2026-01-01T00:00:00Z",
-      updatedAt: "2026-01-01T00:00:00Z",
-    },
-  },
 };
 
 const isColumnId = (columns: Column[], id: string) =>

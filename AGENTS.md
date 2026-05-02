@@ -32,19 +32,19 @@ For the MVP, this will run locally (in a docker container)
 
 A working MVP of the frontend has been built and is already in frontend. This is not yet designed for the Docker setup. It's a pure frontend-only demo.
 
-## Color Scheme — "Coastal Calm"
+## Color Scheme — "Harbor & Ember"
 
-Cool blue-cyan family with a coral accent and a warm sand neutral to balance the palette.
+Low-saturation Pantone-inspired blue family paired with a muted brick-red accent. The blues stay calm and cool, while the red anchors emphasis without shouting.
 
-- Deep Sea: `#0F2A47` (Pantone 19-4023 TCX Dark Sapphire) - main headings, primary text, deep surfaces
-- Pacific Blue: `#0085A1` (Pantone 17-4730 TCX Caribbean Sea) - brand primary, CTAs, links, focus rings
-- Aqua Mist: `#7BC4BC` (Pantone 14-4814 TCX Pool Blue) - secondary highlight, badges, gradient mid-tone
-- Coral Sunset: `#F2715E` (Pantone 16-1546 TCX Living Coral) - complementary accent, warnings, attention dots
-- Sand Dune: `#F4E1C1` (Pantone 13-1006 TCX Cream Tan) - warm neutral, soft surface tint, hover backgrounds
-- Slate: `#6B7A8F` (Pantone 16-3915 TCX Alloy) - supporting text, labels, secondary content
-- Foam: `#EAF3F4` - page background, palest cool surface
+- Deep Sea: `#1F3055` (Pantone 19-3919 TPX Insignia Blue) - main headings, primary text, deep surfaces
+- Pacific Blue: `#487090` (Pantone 18-4032 TCX Riverside) - brand primary, CTAs, links, focus rings
+- Aqua Mist: `#84A0B0` (Pantone 14-4214 TCX Stone Blue) - secondary highlight, badges, gradient mid-tone
+- Coral Sunset: `#B5544A` (Pantone 18-1547 TCX Aurora Red) - red emphasis, warnings, attention dots
+- Sand Dune: `#EDE0CC` (Pantone 13-1010 TCX Vanilla Cream) - warm neutral, soft surface tint, hover backgrounds
+- Slate: `#888B8D` (Pantone 16-3915 TCX Alloy) - supporting text, labels, secondary content
+- Foam: `#E2E8E5` (Pantone 12-4302 TCX Glacier Lake) - page background, palest cool surface
 
-CSS variable names (in `frontend/src/app/globals.css`): `--deep-sea`, `--pacific-blue`, `--aqua-mist`, `--coral-sunset`, `--sand-dune`, `--slate`, `--foam`.
+CSS variable names (in `frontend/src/app/globals.css`): `--deep-sea`, `--pacific-blue`, `--aqua-mist`, `--coral-sunset`, `--sand-dune`, `--slate`, `--foam`. The variable names are kept from the previous "Coastal Calm" palette so existing class names continue to work; only the colour values changed.
 
 ## Coding standards
 

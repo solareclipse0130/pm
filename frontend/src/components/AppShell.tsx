@@ -1,11 +1,18 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
-import { KanbanBoard } from "@/components/KanbanBoard";
+import { FormEvent, useCallback, useEffect, useState } from "react";
+import { Workspace } from "@/components/Workspace";
+import {
+  AuthError,
+  AuthUser,
+  fetchCurrentUser,
+  getStoredSession,
+  login,
+  logout,
+  signup,
+} from "@/lib/authClient";
 
-const SESSION_KEY = "pm-mvp-authenticated";
-const USERNAME = "user";
-const PASSWORD = "password";
+type AuthMode = "login" | "signup";
 
 const BrandMark = ({ size = 36 }: { size?: number }) => (
   <span
@@ -16,7 +23,7 @@ const BrandMark = ({ size = 36 }: { size?: number }) => (
       height: size,
       background:
         "linear-gradient(135deg, var(--pacific-blue) 0%, var(--aqua-mist) 70%, var(--deep-sea) 100%)",
-      boxShadow: "0 10px 24px rgba(15, 42, 71, 0.22)",
+      boxShadow: "0 10px 24px rgba(31, 48, 85, 0.22)",
     }}
   >
     <span
@@ -37,73 +44,99 @@ const BrandMark = ({ size = 36 }: { size?: number }) => (
 );
 
 export const AppShell = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [authStatus, setAuthStatus] = useState<"loading" | "ready">("loading");
+  const [mode, setMode] = useState<AuthMode>("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (window.localStorage.getItem(SESSION_KEY) === "true") {
-      // Restoring persisted session must run after mount to avoid SSR/CSR
-      // hydration mismatch on the static export.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setIsAuthenticated(true);
-    }
-  }, []);
-
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (username === USERNAME && password === PASSWORD) {
-      window.localStorage.setItem(SESSION_KEY, "true");
-      setIsAuthenticated(true);
-      setError("");
-      setPassword("");
+    let cancelled = false;
+    const session = getStoredSession();
+    if (!session) {
+      setAuthStatus("ready");
       return;
     }
+    fetchCurrentUser()
+      .then((current) => {
+        if (cancelled) return;
+        setUser(current);
+        setAuthStatus("ready");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setUser(null);
+        setAuthStatus("ready");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-    window.localStorage.removeItem(SESSION_KEY);
-    setIsAuthenticated(false);
-    setError("Invalid username or password.");
-  };
-
-  const handleLogout = () => {
-    window.localStorage.removeItem(SESSION_KEY);
-    setIsAuthenticated(false);
-    setUsername("");
-    setPassword("");
+  const handleSwitchMode = (next: AuthMode) => {
+    setMode(next);
     setError("");
   };
 
-  if (isAuthenticated) {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError("");
+    setIsSubmitting(true);
+    try {
+      const result =
+        mode === "login"
+          ? await login(username.trim(), password)
+          : await signup(username.trim(), password, displayName.trim() || undefined);
+      setUser(result.user);
+      setPassword("");
+      setDisplayName("");
+    } catch (err) {
+      if (err instanceof AuthError) {
+        setError(err.message);
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Unable to authenticate.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleLogout = useCallback(async () => {
+    await logout();
+    setUser(null);
+    setUsername("");
+    setPassword("");
+    setDisplayName("");
+    setError("");
+  }, []);
+
+  if (authStatus === "loading") {
     return (
-      <div>
-        <div className="sticky top-0 z-20 border-b border-[var(--stroke)] surface-glass px-6 py-3">
-          <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <BrandMark size={32} />
-              <div className="leading-tight">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.32em] text-[var(--slate)]">
-                  Kanban Studio
-                </p>
-                <p className="text-sm font-semibold text-[var(--deep-sea)]">
-                  Signed in as user
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="focus-ring rounded-full border border-[var(--stroke)] bg-white/70 px-4 py-2 text-sm font-semibold text-[var(--deep-sea)] transition hover:border-[var(--aqua-mist)] hover:text-[var(--aqua-mist)]"
-            >
-              Logout
-            </button>
-          </div>
+      <main className="flex min-h-screen items-center justify-center px-6 py-12">
+        <div className="flex items-center gap-3 rounded-full border border-[var(--stroke)] bg-white/80 px-5 py-3 shadow-[var(--shadow-soft)]">
+          <span className="pulse-dot h-2 w-2 rounded-full bg-[var(--pacific-blue)]" />
+          <p className="text-sm font-semibold text-[var(--deep-sea)]">
+            Restoring session...
+          </p>
         </div>
-        <KanbanBoard />
-      </div>
+      </main>
     );
   }
+
+  if (user) {
+    return <Workspace user={user} onLogout={handleLogout} />;
+  }
+
+  const isLogin = mode === "login";
+  const submitLabel = isLogin ? "Sign in" : "Create account";
+  const switchPrompt = isLogin
+    ? "New here? Create an account"
+    : "Already have an account? Sign in";
 
   return (
     <main className="relative flex min-h-screen items-center justify-center px-6 py-12">
@@ -113,19 +146,19 @@ export const AppShell = () => {
       >
         <span
           className="float-slow absolute -left-32 top-12 h-96 w-96 rounded-full opacity-40 blur-3xl"
-          style={{ background: "radial-gradient(circle, rgba(0,133,161,0.55), transparent 70%)" }}
+          style={{ background: "radial-gradient(circle, rgba(72,112,144,0.50), transparent 70%)" }}
         />
         <span
           className="float-slow absolute -right-24 top-1/3 h-[28rem] w-[28rem] rounded-full opacity-40 blur-3xl"
           style={{
-            background: "radial-gradient(circle, rgba(123,196,188,0.55), transparent 70%)",
+            background: "radial-gradient(circle, rgba(132,160,176,0.50), transparent 70%)",
             animationDelay: "1.4s",
           }}
         />
         <span
           className="float-slow absolute bottom-0 left-1/3 h-72 w-72 rounded-full opacity-40 blur-3xl"
           style={{
-            background: "radial-gradient(circle, rgba(242,113,94,0.45), transparent 70%)",
+            background: "radial-gradient(circle, rgba(181,84,74,0.40), transparent 70%)",
             animationDelay: "2.8s",
           }}
         />
@@ -137,7 +170,7 @@ export const AppShell = () => {
           className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full"
           style={{
             background:
-              "radial-gradient(circle, rgba(0,133,161,0.35), transparent 70%)",
+              "radial-gradient(circle, rgba(72,112,144,0.32), transparent 70%)",
           }}
         />
         <span
@@ -145,7 +178,7 @@ export const AppShell = () => {
           className="pointer-events-none absolute -bottom-24 -left-24 h-56 w-56 rounded-full"
           style={{
             background:
-              "radial-gradient(circle, rgba(123,196,188,0.30), transparent 70%)",
+              "radial-gradient(circle, rgba(132,160,176,0.28), transparent 70%)",
           }}
         />
 
@@ -161,12 +194,39 @@ export const AppShell = () => {
           </div>
         </div>
 
+        <div className="relative mt-7 flex gap-2 rounded-full border border-[var(--stroke)] bg-white/70 p-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--slate)]">
+          <button
+            type="button"
+            onClick={() => handleSwitchMode("login")}
+            className={`flex-1 rounded-full px-3 py-2 transition ${
+              isLogin
+                ? "bg-[var(--pacific-blue)] text-white shadow-[var(--shadow-soft)]"
+                : "text-[var(--slate)] hover:text-[var(--deep-sea)]"
+            }`}
+          >
+            Sign in
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSwitchMode("signup")}
+            className={`flex-1 rounded-full px-3 py-2 transition ${
+              !isLogin
+                ? "bg-[var(--pacific-blue)] text-white shadow-[var(--shadow-soft)]"
+                : "text-[var(--slate)] hover:text-[var(--deep-sea)]"
+            }`}
+          >
+            Sign up
+          </button>
+        </div>
+
         <div className="relative mt-7">
           <h1 className="font-display text-3xl font-semibold leading-tight">
-            <span className="shimmer-text">Sign in</span>
+            <span className="shimmer-text">{isLogin ? "Sign in" : "Create account"}</span>
           </h1>
           <p className="mt-2 text-sm leading-6 text-[var(--slate)]">
-            Welcome back. Pick up where you left off and keep the board moving.
+            {isLogin
+              ? "Welcome back. Pick up where you left off and keep your boards moving."
+              : "Set up your workspace. Your boards stay private to your account."}
           </p>
         </div>
 
@@ -178,8 +238,23 @@ export const AppShell = () => {
               onChange={(event) => setUsername(event.target.value)}
               className="focus-ring rounded-xl border border-[var(--stroke)] bg-white/85 px-4 py-3 text-base font-medium normal-case tracking-normal text-[var(--deep-sea)]"
               autoComplete="username"
+              required
+              minLength={3}
+              maxLength={64}
             />
           </label>
+          {!isLogin && (
+            <label className="flex flex-col gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--slate)]">
+              Display name
+              <input
+                value={displayName}
+                onChange={(event) => setDisplayName(event.target.value)}
+                className="focus-ring rounded-xl border border-[var(--stroke)] bg-white/85 px-4 py-3 text-base font-medium normal-case tracking-normal text-[var(--deep-sea)]"
+                autoComplete="name"
+                maxLength={120}
+              />
+            </label>
+          )}
           <label className="flex flex-col gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--slate)]">
             Password
             <input
@@ -187,7 +262,10 @@ export const AppShell = () => {
               onChange={(event) => setPassword(event.target.value)}
               className="focus-ring rounded-xl border border-[var(--stroke)] bg-white/85 px-4 py-3 text-base font-medium normal-case tracking-normal text-[var(--deep-sea)]"
               type="password"
-              autoComplete="current-password"
+              autoComplete={isLogin ? "current-password" : "new-password"}
+              required
+              minLength={8}
+              maxLength={256}
             />
           </label>
           {error && (
@@ -197,21 +275,33 @@ export const AppShell = () => {
           )}
           <button
             type="submit"
-            className="focus-ring mt-2 rounded-xl px-4 py-3 text-sm font-semibold uppercase tracking-[0.16em] text-white transition hover:brightness-110"
+            disabled={isSubmitting}
+            className="focus-ring mt-2 rounded-xl px-4 py-3 text-sm font-semibold uppercase tracking-[0.16em] text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
             style={{
               background:
                 "linear-gradient(135deg, var(--pacific-blue) 0%, var(--aqua-mist) 100%)",
-              boxShadow: "0 14px 30px rgba(123, 196, 188, 0.28)",
+              boxShadow: "0 14px 30px rgba(132, 160, 176, 0.28)",
             }}
           >
-            Sign in
+            {isSubmitting ? "Working..." : submitLabel}
+          </button>
+          <button
+            type="button"
+            className="focus-ring text-center text-xs font-semibold uppercase tracking-[0.18em] text-[var(--slate)] transition hover:text-[var(--pacific-blue)]"
+            onClick={() => handleSwitchMode(isLogin ? "signup" : "login")}
+          >
+            {switchPrompt}
           </button>
         </form>
 
         <p className="relative mt-6 text-center text-xs text-[var(--slate)]">
-          MVP credentials: <span className="font-semibold text-[var(--deep-sea)]">user</span> / <span className="font-semibold text-[var(--deep-sea)]">password</span>
+          MVP credentials still work:{" "}
+          <span className="font-semibold text-[var(--deep-sea)]">user</span> /{" "}
+          <span className="font-semibold text-[var(--deep-sea)]">password</span>
         </p>
       </section>
     </main>
   );
 };
+
+export { BrandMark };
