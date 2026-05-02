@@ -117,10 +117,6 @@ export const BoardSwitcher = ({
     closePanel();
   };
 
-  const handleDelete = async (boardId: number) => {
-    await onDelete(boardId);
-  };
-
   return (
     <div
       ref={containerRef}
@@ -278,7 +274,7 @@ export const BoardSwitcher = ({
                       <button
                         type="button"
                         aria-label={`Delete ${board.title}`}
-                        onClick={() => handleDelete(board.id)}
+                        onClick={() => onDelete(board.id)}
                         disabled={isBusy}
                         className="focus-ring rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--slate)] hover:text-[var(--coral-sunset)] disabled:opacity-50"
                       >

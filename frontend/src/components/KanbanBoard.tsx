@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -154,8 +154,6 @@ export const KanbanBoard = ({
     return () => window.clearTimeout(timeoutId);
   }, [highlightedCardIds, highlightedColumnIds]);
 
-  const cardsById = useMemo(() => data.cards, [data.cards]);
-
   const persistData = (next: BoardData) => {
     pendingSavesRef.current += 1;
     setSaveStatus("saving");
@@ -297,23 +295,30 @@ export const KanbanBoard = ({
     }
   };
 
-  const activeCard = activeCardId ? cardsById[activeCardId] : null;
+  const activeCard = activeCardId ? data.cards[activeCardId] : null;
   const totalCards = Object.keys(data.cards).length;
   const doneCardIds = new Set(data.columns[data.columns.length - 1]?.cardIds ?? []);
   const completionRatio = totalCards === 0 ? 0 : doneCardIds.size / totalCards;
   const completionPct = Math.round(completionRatio * 100);
 
-  let saveLabel = "All changes saved";
-  let saveDotClass = "bg-emerald-500";
-  let saveDescription = "Changes saved.";
-  if (saveStatus === "saving") {
-    saveLabel = "Saving changes";
-    saveDotClass = "bg-[var(--pacific-blue)] pulse-dot";
-    saveDescription = "Saving changes...";
-  } else if (saveStatus === "error") {
-    saveLabel = "Save failed";
-    saveDotClass = "bg-red-500";
-    saveDescription = "Unable to save board.";
+  let saveLabel: string;
+  let saveDotClass: string;
+  let saveDescription: string;
+  switch (saveStatus) {
+    case "saving":
+      saveLabel = "Saving changes";
+      saveDotClass = "bg-[var(--pacific-blue)] pulse-dot";
+      saveDescription = "Saving changes...";
+      break;
+    case "error":
+      saveLabel = "Save failed";
+      saveDotClass = "bg-red-500";
+      saveDescription = "Unable to save board.";
+      break;
+    default:
+      saveLabel = "All changes saved";
+      saveDotClass = "bg-emerald-500";
+      saveDescription = "Changes saved.";
   }
 
   return (

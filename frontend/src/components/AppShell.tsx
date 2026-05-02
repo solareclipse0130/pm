@@ -3,7 +3,6 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Workspace } from "@/components/Workspace";
 import {
-  AuthError,
   AuthUser,
   fetchCurrentUser,
   getStoredSession,
@@ -94,13 +93,7 @@ export const AppShell = () => {
       setPassword("");
       setDisplayName("");
     } catch (err) {
-      if (err instanceof AuthError) {
-        setError(err.message);
-      } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Unable to authenticate.");
-      }
+      setError(err instanceof Error ? err.message : "Unable to authenticate.");
     } finally {
       setIsSubmitting(false);
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { BrandMark } from "@/components/AppShell";
 import { BoardSwitcher } from "@/components/BoardSwitcher";
 import { KanbanBoard } from "@/components/KanbanBoard";
@@ -194,10 +194,7 @@ export const Workspace = ({ user, onLogout }: WorkspaceProps) => {
     );
   }, []);
 
-  const greetingName = useMemo(
-    () => user.displayName || user.username,
-    [user.displayName, user.username]
-  );
+  const greetingName = user.displayName || user.username;
 
   const boardSwitcher = (
     <BoardSwitcher

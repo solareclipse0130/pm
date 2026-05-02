@@ -85,9 +85,8 @@ async def create_chat_completion(
         response = await _post_chat_completion(payload, headers, timeout)
         response.raise_for_status()
     except httpx.HTTPStatusError as error:
-        status_code = error.response.status_code
         raise DeepSeekAPIError(
-            f"DeepSeek API returned HTTP {status_code}."
+            f"DeepSeek API returned HTTP {error.response.status_code}."
         ) from error
     except httpx.HTTPError as error:
         raise DeepSeekAPIError("DeepSeek API request failed.") from error

@@ -154,7 +154,7 @@ def _migrate_legacy_v0(connection: sqlite3.Connection) -> None:
         row["name"]
         for row in connection.execute("PRAGMA table_info(users)").fetchall()
     }
-    if user_columns and "password_hash" not in user_columns:
+    if "password_hash" not in user_columns:
         connection.execute(
             "ALTER TABLE users ADD COLUMN password_hash TEXT NOT NULL DEFAULT ''"
         )
@@ -166,7 +166,7 @@ def _migrate_legacy_v0(connection: sqlite3.Connection) -> None:
         row["name"]
         for row in connection.execute("PRAGMA table_info(boards)").fetchall()
     }
-    if board_columns and {"user_id"} <= board_columns and "owner_id" not in board_columns:
+    if "user_id" in board_columns and "owner_id" not in board_columns:
         # The legacy schema has a unique user_id column. SQLite cannot drop a
         # UNIQUE constraint in place, so rebuild the table.
         connection.executescript(
@@ -239,7 +239,6 @@ def _seed_default_board(
     connection: sqlite3.Connection, user_id: int, now: str
 ) -> int:
     board = create_default_board(now)
-    validate_board(board)
     cursor = connection.execute(
         """
         INSERT INTO boards (owner_id, title, description, position, data, created_at, updated_at)
@@ -277,8 +276,6 @@ def initialize_database(database_path: Path) -> None:
 
 
 def hash_password(password: str) -> str:
-    if not isinstance(password, str):
-        raise StorageError("Password must be a string.")
     if len(password) < MIN_PASSWORD_LENGTH:
         raise StorageError(
             f"Password must be at least {MIN_PASSWORD_LENGTH} characters."
@@ -363,9 +360,7 @@ def _validate_display_name(display_name: Any) -> str:
     return cleaned
 
 
-def _user_to_dict(row: sqlite3.Row | None) -> dict[str, Any] | None:
-    if row is None:
-        return None
+def _user_to_dict(row: sqlite3.Row) -> dict[str, Any]:
     return {
         "id": int(row["id"]),
         "username": row["username"],
@@ -440,7 +435,7 @@ def get_user(database_path: Path, user_id: int) -> dict[str, Any] | None:
             "SELECT id, username, display_name, created_at, updated_at FROM users WHERE id = ?",
             (user_id,),
         ).fetchone()
-    return _user_to_dict(row)
+    return _user_to_dict(row) if row else None
 
 
 def update_user_profile(
@@ -506,13 +501,12 @@ def create_session(
 ) -> dict[str, Any]:
     initialize_database(database_path)
     token = secrets.token_urlsafe(SESSION_TOKEN_BYTES)
-    # Match utc_now() precision so expires_at and the comparison value stored
-    # via _prune_expired_sessions sort lexicographically as expected (mixing
-    # second- and microsecond-precision ISO strings flips ordering: "Z" > ".").
+    # Use the same microsecond precision as utc_now() so created_at, expires_at
+    # and the comparison value used by _prune_expired_sessions sort
+    # lexicographically together.
     now_dt = datetime.now(timezone.utc)
-    expires_dt = now_dt + timedelta(seconds=ttl_seconds)
     created_at = now_dt.isoformat().replace("+00:00", "Z")
-    expires_at = expires_dt.isoformat().replace("+00:00", "Z")
+    expires_at = (now_dt + timedelta(seconds=ttl_seconds)).isoformat().replace("+00:00", "Z")
     with connect(database_path) as connection:
         existing = connection.execute(
             "SELECT id FROM users WHERE id = ?", (user_id,)
@@ -1001,16 +995,12 @@ def update_board_meta(
     set_clause = ", ".join(f"{name} = ?" for name, _ in fields)
     params = [value for _, value in fields] + [board_id, user_id]
     with connect(database_path) as connection:
-        existing = connection.execute(
-            "SELECT id FROM boards WHERE id = ? AND owner_id = ?",
-            (board_id, user_id),
-        ).fetchone()
-        if existing is None:
-            raise NotFoundError("Board does not exist.")
-        connection.execute(
+        cursor = connection.execute(
             f"UPDATE boards SET {set_clause} WHERE id = ? AND owner_id = ?",
             params,
         )
+        if cursor.rowcount == 0:
+            raise NotFoundError("Board does not exist.")
     return get_board(database_path, user_id, board_id)
 
 

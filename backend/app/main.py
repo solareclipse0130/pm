@@ -34,7 +34,6 @@ from app.storage import (
     delete_session,
     get_board,
     get_database_path,
-    get_user,
     initialize_database,
     list_boards,
     list_user_sessions,
@@ -52,6 +51,21 @@ DeepSeekCheckResult = Union[dict[str, str], Awaitable[dict[str, str]]]
 DeepSeekCheckFn = Callable[[], DeepSeekCheckResult]
 AICompletionResult = Union[str, Awaitable[str]]
 AICompletionFn = Callable[[list[dict[str, str]]], AICompletionResult]
+
+# Map storage exceptions to HTTP status codes. Order matters: subclasses first.
+_STORAGE_STATUS = (
+    (NotFoundError, 404),
+    (ConflictError, 409),
+    (AuthError, 401),
+    (StorageError, 400),
+)
+
+
+def _http_from_storage(error: StorageError) -> HTTPException:
+    for exc_type, code in _STORAGE_STATUS:
+        if isinstance(error, exc_type):
+            return HTTPException(status_code=code, detail=str(error))
+    return HTTPException(status_code=400, detail=str(error))
 
 
 # ---------------- Pydantic schemas -----------------------------------------
@@ -244,10 +258,8 @@ def create_app(
                 payload.displayName,
             )
             session = create_session(db_path, user["id"])
-        except ConflictError as error:
-            raise HTTPException(status_code=409, detail=str(error)) from error
         except StorageError as error:
-            raise HTTPException(status_code=400, detail=str(error)) from error
+            raise _http_from_storage(error) from error
         return {"user": user, "session": session}
 
     @app.post("/api/auth/login")
@@ -255,10 +267,8 @@ def create_app(
         try:
             user = authenticate(db_path, payload.username, payload.password)
             session = create_session(db_path, user["id"])
-        except AuthError as error:
-            raise HTTPException(status_code=401, detail=str(error)) from error
         except StorageError as error:
-            raise HTTPException(status_code=400, detail=str(error)) from error
+            raise _http_from_storage(error) from error
         return {"user": user, "session": session}
 
     @app.post("/api/auth/logout")
@@ -276,11 +286,9 @@ def create_app(
         user: dict[str, Any] = Depends(current_user),
     ) -> dict[str, Any]:
         try:
-            return update_user_profile(
-                db_path, user["id"], payload.displayName
-            )
+            return update_user_profile(db_path, user["id"], payload.displayName)
         except StorageError as error:
-            raise HTTPException(status_code=400, detail=str(error)) from error
+            raise _http_from_storage(error) from error
 
     @app.put("/api/auth/password")
     def change_user_password(
@@ -294,10 +302,8 @@ def create_app(
                 payload.currentPassword,
                 payload.newPassword,
             )
-        except AuthError as error:
-            raise HTTPException(status_code=401, detail=str(error)) from error
         except StorageError as error:
-            raise HTTPException(status_code=400, detail=str(error)) from error
+            raise _http_from_storage(error) from error
         return {"changed": True}
 
     @app.get("/api/auth/sessions")
@@ -322,18 +328,10 @@ def create_app(
         try:
             data = payload.data.model_dump() if payload.data else None
             return create_board(
-                db_path,
-                user["id"],
-                payload.title,
-                payload.description,
-                data,
+                db_path, user["id"], payload.title, payload.description, data
             )
-        except ConflictError as error:
-            raise HTTPException(status_code=409, detail=str(error)) from error
-        except NotFoundError as error:
-            raise HTTPException(status_code=404, detail=str(error)) from error
         except StorageError as error:
-            raise HTTPException(status_code=400, detail=str(error)) from error
+            raise _http_from_storage(error) from error
 
     @app.put("/api/boards/order")
     def reorder_user_boards(
@@ -343,7 +341,7 @@ def create_app(
         try:
             return reorder_boards(db_path, user["id"], payload.boardIds)
         except StorageError as error:
-            raise HTTPException(status_code=400, detail=str(error)) from error
+            raise _http_from_storage(error) from error
 
     @app.get("/api/boards/{board_id}")
     def get_one_board(
@@ -352,8 +350,8 @@ def create_app(
     ) -> dict[str, Any]:
         try:
             return get_board(db_path, user["id"], board_id)
-        except NotFoundError as error:
-            raise HTTPException(status_code=404, detail=str(error)) from error
+        except StorageError as error:
+            raise _http_from_storage(error) from error
 
     @app.patch("/api/boards/{board_id}")
     def patch_board_meta(
@@ -363,16 +361,10 @@ def create_app(
     ) -> dict[str, Any]:
         try:
             return update_board_meta(
-                db_path,
-                user["id"],
-                board_id,
-                payload.title,
-                payload.description,
+                db_path, user["id"], board_id, payload.title, payload.description
             )
-        except NotFoundError as error:
-            raise HTTPException(status_code=404, detail=str(error)) from error
         except StorageError as error:
-            raise HTTPException(status_code=400, detail=str(error)) from error
+            raise _http_from_storage(error) from error
 
     @app.put("/api/boards/{board_id}/data")
     def put_board_data(
@@ -388,12 +380,8 @@ def create_app(
                 payload.data.model_dump(),
                 payload.expectedUpdatedAt,
             )
-        except NotFoundError as error:
-            raise HTTPException(status_code=404, detail=str(error)) from error
-        except ConflictError as error:
-            raise HTTPException(status_code=409, detail=str(error)) from error
         except StorageError as error:
-            raise HTTPException(status_code=400, detail=str(error)) from error
+            raise _http_from_storage(error) from error
 
     @app.delete("/api/boards/{board_id}", status_code=204)
     def delete_one_board(
@@ -402,8 +390,8 @@ def create_app(
     ) -> None:
         try:
             delete_board(db_path, user["id"], board_id)
-        except NotFoundError as error:
-            raise HTTPException(status_code=404, detail=str(error)) from error
+        except StorageError as error:
+            raise _http_from_storage(error) from error
 
     # ------------- AI chat (board-scoped) ---------------------------------
 
@@ -420,10 +408,7 @@ def create_app(
             )
             current_board = get_board(db_path, user["id"], board_id)
             ai_response = await ask_ai_for_board_update(
-                current_board["data"],
-                user_message,
-                history,
-                ai_completion,
+                current_board["data"], user_message, history, ai_completion
             )
             updated_board_data = ai_response["board"]
             board_after = current_board
@@ -456,12 +441,8 @@ def create_app(
             }
         except AIResponseError as error:
             raise HTTPException(status_code=502, detail=str(error)) from error
-        except NotFoundError as error:
-            raise HTTPException(status_code=404, detail=str(error)) from error
-        except ConflictError as error:
-            raise HTTPException(status_code=409, detail=str(error)) from error
         except StorageError as error:
-            raise HTTPException(status_code=400, detail=str(error)) from error
+            raise _http_from_storage(error) from error
         except ValueError as error:
             # Bare ValueError from message/history validation in app.ai.
             raise HTTPException(status_code=400, detail=str(error)) from error

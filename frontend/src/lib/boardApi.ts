@@ -17,19 +17,17 @@ export type BoardDetail = BoardSummary & {
   data: BoardData;
 };
 
-const readErrorDetail = async (response: Response): Promise<string> => {
+const failOn = async (response: Response, fallback: string): Promise<never> => {
+  let detail = "";
   try {
     const body = await response.json();
-    if (typeof body.detail === "string") return body.detail;
+    if (typeof body.detail === "string") detail = body.detail;
   } catch {
-    // ignore
+    // ignore non-JSON body
   }
-  return response.statusText || `Request failed with status ${response.status}.`;
-};
-
-const failOn = async (response: Response, fallback: string): Promise<never> => {
-  const detail = await readErrorDetail(response);
-  throw new Error(detail || fallback);
+  throw new Error(
+    detail || response.statusText || fallback || `Request failed with status ${response.status}.`
+  );
 };
 
 export const listBoards = async (): Promise<BoardSummary[]> => {

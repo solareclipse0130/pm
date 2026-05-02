@@ -143,13 +143,9 @@ async def ask_ai_for_board_update(
     messages = build_ai_messages(board, user_message, history)
     if completion_fn:
         result = completion_fn(messages)
-        if inspect.isawaitable(result):
-            content = await result
-        else:
-            content = result
+        content = await result if inspect.isawaitable(result) else result
     else:
         content = await create_chat_completion(
-            messages,
-            response_format={"type": "json_object"},
+            messages, response_format={"type": "json_object"}
         )
     return parse_ai_response(content)
